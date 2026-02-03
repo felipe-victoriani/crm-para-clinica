@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - CRM Clínico</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#2C56C9" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="login-container">
+      <h2>Login Administrativo</h2>
+      <form id="loginForm">
+        <input type="email" id="email" placeholder="Email" required />
+        <input type="password" id="password" placeholder="Senha" required />
+        <button type="submit">Entrar</button>
+      </form>
+      <p id="errorMessage"></p>
+    </div>
+    <script type="module" src="auth.js"></script>
+    <script type="module">
+      import { login, onAuthStateChange } from "./auth.js";
+
+      const loginForm = document.getElementById("loginForm");
+      const errorMessage = document.getElementById("errorMessage");
+
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        try {
+          await login(email, password);
+          window.location.href = "index.html";
+        } catch (error) {
+          errorMessage.textContent = "Erro no login: " + error.message;
+        }
+      });
+
+      onAuthStateChange((user) => {
+        if (user) {
+          window.location.href = "index.html";
+        }
+      });
+    </script>
+  </body>
+</html>

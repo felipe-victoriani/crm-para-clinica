@@ -1,0 +1,29 @@
+// Regras do Firebase Realtime Database
+// Acesse o console do Firebase > Realtime Database > Rules
+// e cole UMA das opções abaixo conforme sua necessidade.
+
+// Opção 1: Negar tudo (nenhum usuário pode ler/escrever)
+// ATENÇÃO: Isso bloqueia completamente o app.
+// Use apenas para manutenção ou auditoria.
+// {
+//   "rules": {
+//     ".read": false,
+//     ".write": false
+//   }
+// }
+
+// Opção 2 (Recomendada): Permitir apenas usuários autenticados
+// Essa opção mantém o app funcional e seguro.
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "patients": {
+      ".indexOn": ["createdAt", "lastContactAt"]
+    }
+  }
+}
+
+// Observações:
+// - Após colar as regras no Console do Firebase, clique em "Publicar".
+// - Os índices em createdAt e lastContactAt melhoram o desempenho de consultas/ordenções.

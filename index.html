@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CRM Clínico - Controle de Pacientes</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#2C56C9" />
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <header>
+      <h1>CRM - Controle de Pacientes de Risco Cirúrgico-Oftalmo 15</h1>
+      <div class="header-controls">
+        <button id="themeToggle" title="Alternar Tema">
+          <i class="fas fa-moon"></i>
+        </button>
+        <button id="logoutBtn">Logout</button>
+      </div>
+    </header>
+
+    <div class="container">
+      <nav class="sidebar">
+        <ul>
+          <li>
+            <a
+              href="#dashboard"
+              class="nav-link active"
+              data-section="dashboard"
+              ><i class="fas fa-tachometer-alt"></i> Dashboard</a
+            >
+          </li>
+          <li>
+            <a href="#patients" class="nav-link" data-section="patients"
+              ><i class="fas fa-users"></i> Pacientes</a
+            >
+          </li>
+          <li>
+            <a href="#reports" class="nav-link" data-section="reports"
+              ><i class="fas fa-chart-bar"></i> Relatórios</a
+            >
+          </li>
+          <li>
+            <a href="#settings" class="nav-link" data-section="settings"
+              ><i class="fas fa-cog"></i> Configurações</a
+            >
+          </li>
+        </ul>
+      </nav>
+
+      <main class="main-content">
+        <section id="dashboard-section" class="section active">
+          <h2>Dashboard</h2>
+          <div id="dashboard" class="dashboard">
+            <!-- Dashboard será renderizado aqui -->
+          </div>
+        </section>
+
+        <section id="patients-section" class="section">
+          <h2>Gestão de Pacientes</h2>
+          <div class="patients-container">
+            <div class="form-section">
+              <h3>Cadastrar Paciente</h3>
+              <form id="patientForm">
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Nome do paciente"
+                  required
+                />
+                <input type="date" name="visitDate" required />
+                <select name="doctor" required>
+                  <option value="">Selecione o médico</option>
+                  <option value="Dr. Dante">Dr. Dante</option>
+                  <option value="Dr. Alberto">Dr. Alberto</option>
+                  <option value="Dra. Fabiana">Dra. Fabiana</option>
+                </select>
+                <input
+                  type="text"
+                  name="surgeryType"
+                  placeholder="Tipo de cirurgia"
+                  required
+                />
+                <textarea name="notes" placeholder="Observações"></textarea>
+                <input
+                  type="tel"
+                  name="phone"
+                  placeholder="Telefone (somente números)"
+                  pattern="[0-9]+"
+                  required
+                />
+                <select name="status" required>
+                  <option value="">Selecione a situação</option>
+                  <option value="Paciente solicitado risco">
+                    Paciente solicitado risco
+                  </option>
+                  <option value="Paciente agendou cirurgia">
+                    Paciente agendou cirurgia
+                  </option>
+                  <option value="Paciente fez cirurgia">
+                    Paciente fez cirurgia
+                  </option>
+                  <option value="Paciente não quer operar">
+                    Paciente não quer operar
+                  </option>
+                </select>
+                <button type="submit">Cadastrar</button>
+              </form>
+            </div>
+
+            <div class="filters">
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="Buscar por nome"
+              />
+              <select id="statusFilter">
+                <option value="">Todos os status</option>
+                <option value="Paciente solicitado risco">
+                  Paciente solicitado risco
+                </option>
+                <option value="Paciente agendou cirurgia">
+                  Paciente agendou cirurgia
+                </option>
+                <option value="Paciente fez cirurgia">
+                  Paciente fez cirurgia
+                </option>
+                <option value="Paciente não quer operar">
+                  Paciente não quer operar
+                </option>
+              </select>
+              <select id="daysFilter">
+                <option value="">Todos os dias</option>
+                <option value="30">30+ dias</option>
+                <option value="45">45+ dias</option>
+                <option value="60">60+ dias</option>
+              </select>
+            </div>
+
+            <div id="patientsList" class="patients-list">
+              <!-- Lista de pacientes será renderizada aqui -->
+            </div>
+          </div>
+        </section>
+
+        <section id="reports-section" class="section">
+          <h2>Relatórios</h2>
+          <div id="reportSection" class="report">
+            <button id="generateReport">Gerar Relatório Mensal</button>
+            <!-- Relatório será renderizado aqui -->
+          </div>
+        </section>
+
+        <section id="settings-section" class="section">
+          <h2>Configurações</h2>
+          <div class="settings">
+            <form id="settingsForm">
+              <div class="settings-row">
+                <label for="countryCode">Código do país (WhatsApp):</label>
+                <input
+                  id="countryCode"
+                  type="text"
+                  value="55"
+                  pattern="[0-9]+"
+                />
+              </div>
+              <div class="settings-row">
+                <label for="areaCode">DDD (opcional):</label>
+                <input
+                  id="areaCode"
+                  type="text"
+                  value="67"
+                  placeholder="Ex: 67"
+                  pattern="[0-9]*"
+                />
+              </div>
+              <button type="submit">Salvar Configurações</button>
+              <p class="hint">
+                Mensagens serão enviadas via WhatsApp Web (QR). Se não estiver
+                logado, o WhatsApp Web solicitará o QR automaticamente.
+              </p>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Modal de Edição -->
+    <div id="editModal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Editar Paciente</h2>
+        <form id="editForm">
+          <label for="editStatus">Situação:</label>
+          <select id="editStatus" required>
+            <option value="Paciente solicitado risco">
+              Paciente solicitado risco
+            </option>
+            <option value="Paciente agendou cirurgia">
+              Paciente agendou cirurgia
+            </option>
+            <option value="Paciente fez cirurgia">Paciente fez cirurgia</option>
+            <option value="Paciente não quer operar">
+              Paciente não quer operar
+            </option>
+          </select>
+          <label for="editNotes">Observações (editar ou adicionar):</label>
+          <textarea
+            id="editNotes"
+            placeholder="Observações sobre o paciente..."
+          ></textarea>
+          <button type="submit">Salvar Alterações</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal de Observações -->
+    <div id="notesModal" class="modal">
+      <div class="modal-content notes-modal">
+        <span class="close notes-close">&times;</span>
+        <h3 id="notesTitle">Observações</h3>
+        <div id="notesContent"></div>
+      </div>
+    </div>
+
+    <script type="module" src="main.js"></script>
+  </body>
+</html>
