@@ -6,14 +6,28 @@ import { renderDashboard, renderPatients, setupEventListeners } from "./ui.js";
 // Inicializar autenticação
 const logoutBtn = document.getElementById("logoutBtn");
 
+// Helper para compatibilizar produção (cleanUrls) e ambiente local (.html)
+function supportsCleanUrls() {
+  return !/\.html$/.test(window.location.pathname);
+}
+
+function pathForLogin() {
+  return supportsCleanUrls() ? "/login" : "login.html";
+}
+
+function pathForIndex() {
+  return supportsCleanUrls() ? "/" : "index.html";
+}
+
 logoutBtn.addEventListener("click", async () => {
   await logout();
-  window.location.href = "login.html";
+  window.location.replace(pathForLogin());
 });
 
 onAuthStateChange((user) => {
   if (!user) {
-    window.location.href = "login.html";
+    // Usuário não autenticado: enviar para login sem criar histórico
+    window.location.replace(pathForLogin());
   }
 });
 
