@@ -191,7 +191,12 @@ export function getUrgency(days) {
 }
 
 // Filtrar pacientes
-export function filterPatients(search = "", status = "", minDays = null) {
+export function filterPatients(
+  search = "",
+  status = "",
+  minDays = null,
+  doctor = "",
+) {
   let filtered = patients;
 
   // Filtro de busca
@@ -204,6 +209,11 @@ export function filterPatients(search = "", status = "", minDays = null) {
   // Filtro de status
   if (status) {
     filtered = filtered.filter((p) => p.status === status);
+  }
+
+  // Filtro de médico
+  if (doctor) {
+    filtered = filtered.filter((p) => p.doctor === doctor);
   }
 
   // Filtro de dias

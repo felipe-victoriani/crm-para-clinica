@@ -19,6 +19,7 @@ const patientsList = document.getElementById("patientsList");
 const searchInput = document.getElementById("searchInput");
 const statusFilter = document.getElementById("statusFilter");
 const daysFilter = document.getElementById("daysFilter");
+const doctorFilter = document.getElementById("doctorFilter");
 const dashboard = document.getElementById("dashboard");
 const reportSection = document.getElementById("reportSection");
 
@@ -100,27 +101,32 @@ function showFilteredPatients(filter) {
       searchInput.value = "";
       statusFilter.value = "";
       daysFilter.value = "";
+      if (doctorFilter) doctorFilter.value = "";
       break;
     case "over30":
       searchInput.value = "";
       statusFilter.value = "";
       daysFilter.value = "30";
+      if (doctorFilter) doctorFilter.value = "";
       break;
     case "over45":
       searchInput.value = "";
       statusFilter.value = "";
       daysFilter.value = "45";
+      if (doctorFilter) doctorFilter.value = "";
       break;
     case "over60":
       searchInput.value = "";
       statusFilter.value = "";
       daysFilter.value = "60";
+      if (doctorFilter) doctorFilter.value = "";
       break;
     default:
       // Para status específicos
       searchInput.value = "";
       statusFilter.value = filter;
       daysFilter.value = "";
+      if (doctorFilter) doctorFilter.value = "";
       break;
   }
 
@@ -128,13 +134,27 @@ function showFilteredPatients(filter) {
   renderPatients();
 }
 
+function formatPhone(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length > 0) {
+    return digits;
+  }
+  return "";
+}
+
 // Renderizar lista de pacientes
 export function renderPatients() {
   const search = searchInput.value;
   const status = statusFilter.value;
   const days = daysFilter.value ? parseInt(daysFilter.value) : null;
-
-  const filtered = filterPatients(search, status, days);
+  const doctor = doctorFilter ? doctorFilter.value : "";
+  const filtered = filterPatients(search, status, days, doctor);
 
   patientsList.innerHTML = filtered
     .map((patient) => {
@@ -149,9 +169,12 @@ export function renderPatients() {
           ? `<p>Dias desde solicitação: ${baseDays}</p>`
           : `<p>Dias desde cadastro: ${baseDays}</p>`;
 
+      const phoneDisplay = patient.phone ? formatPhone(patient.phone) : "";
+
       return `
       <div class="patient-card" data-status="${patient.status}">
         <h4>${patient.name}</h4>
+        ${phoneDisplay ? `<p>Telefone: ${phoneDisplay}</p>` : ""}
         <p>Médico: ${patient.doctor}</p>
         <p>Cirurgia: ${patient.surgeryType}</p>
         ${infoLine}
@@ -304,6 +327,7 @@ export function setupEventListeners() {
   searchInput.addEventListener("input", renderPatients);
   statusFilter.addEventListener("change", renderPatients);
   daysFilter.addEventListener("change", renderPatients);
+  if (doctorFilter) doctorFilter.addEventListener("change", renderPatients);
 
   // Relatório mensal
   document.getElementById("generateReport").addEventListener("click", () => {
