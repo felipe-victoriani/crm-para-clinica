@@ -263,6 +263,36 @@ header {
   gap: 0.5rem;
 }
 
+/* Agrupamento por situação/status */
+.status-group {
+  margin-bottom: 1rem;
+}
+
+.status-title {
+  margin: 0.25rem 0 0.5rem;
+  color: #007bff;
+  font-size: 1rem;
+  border-left: 4px solid #007bff;
+  padding-left: 0.5rem;
+}
+
+.status-count {
+  font-weight: normal;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.status-group-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.5rem;
+}
+
+/* Cada grupo ocupa toda a largura na grade principal */
+.patients-list .status-group {
+  grid-column: 1 / -1;
+}
+
 .patient-card {
   background-color: white;
   padding: 0.5rem;
@@ -473,16 +503,28 @@ header {
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
+  /* Centralização quando exibido como flex */
+  justify-content: center;
+  align-items: center;
 }
 
 .modal-content {
   background-color: white;
-  margin: 15% auto;
+  margin: 0 auto; /* Deixar centralizado quando o container é flex */
   padding: 2rem;
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  max-height: 85vh; /* Garantir que cabe na tela */
+  overflow-y: auto; /* Permitir rolagem para ver o botão */
+}
+
+/* Ajuste de margem do modal em telas menores */
+@media (max-width: 768px) {
+  .modal-content {
+    margin: 8% auto; /* Em telas menores, manter pequena margem superior */
+  }
 }
 
 .close {
@@ -597,6 +639,15 @@ header {
   border-radius: 4px;
   cursor: pointer;
   align-self: flex-start;
+}
+
+/* Rodapé fixo para ações do modal */
+.modal-actions {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding-top: 0.5rem;
+  border-top: 1px solid #ddd;
 }
 
 /* Modo de armazenamento */

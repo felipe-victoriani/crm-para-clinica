@@ -196,6 +196,7 @@ export function filterPatients(
   status = "",
   minDays = null,
   doctor = "",
+  responsible = "",
 ) {
   let filtered = patients;
 
@@ -214,6 +215,11 @@ export function filterPatients(
   // Filtro de médico
   if (doctor) {
     filtered = filtered.filter((p) => p.doctor === doctor);
+  }
+
+  // Filtro de responsável
+  if (responsible) {
+    filtered = filtered.filter((p) => (p.responsible || "") === responsible);
   }
 
   // Filtro de dias

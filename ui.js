@@ -20,12 +20,16 @@ const searchInput = document.getElementById("searchInput");
 const statusFilter = document.getElementById("statusFilter");
 const daysFilter = document.getElementById("daysFilter");
 const doctorFilter = document.getElementById("doctorFilter");
+const responsibleFilter = document.getElementById("responsibleFilter");
 const dashboard = document.getElementById("dashboard");
 const reportSection = document.getElementById("reportSection");
 
 // Modal de edição
 const editModal = document.getElementById("editModal");
 const editForm = document.getElementById("editForm");
+const editResponsible = document.getElementById("editResponsible");
+const editDoctor = document.getElementById("editDoctor");
+const editPhone = document.getElementById("editPhone");
 const editStatus = document.getElementById("editStatus");
 const editNotes = document.getElementById("editNotes");
 const closeModal = document.querySelector(".close");
@@ -36,6 +40,18 @@ const notesModal = document.getElementById("notesModal");
 const notesTitle = document.getElementById("notesTitle");
 const notesContent = document.getElementById("notesContent");
 const closeNotesModal = document.querySelector(".notes-close");
+
+// Mapeamento de rótulos amigáveis por situação
+const statusDisplayMap = {
+  "Paciente solicitado risco": "Pedido de risco cirúrgico",
+  "Paciente agendou cirurgia": "Agendou cirurgia",
+  "Paciente fez cirurgia": "Pós-cirurgia",
+  "Paciente não quer operar": "Não vai operar",
+};
+
+function displayStatusLabel(status) {
+  return statusDisplayMap[status] || status;
+}
 
 // Renderizar dashboard
 export function renderDashboard() {
@@ -57,7 +73,7 @@ export function renderDashboard() {
       .map(
         (status, i) => `
       <div class="card clickable" data-filter="${status}">
-        <h3>${status}</h3>
+        <h3>${displayStatusLabel(status)}</h3>
         <p>${stats.byStatus[i]}</p>
       </div>
     `,
@@ -102,24 +118,28 @@ function showFilteredPatients(filter) {
       statusFilter.value = "";
       daysFilter.value = "";
       if (doctorFilter) doctorFilter.value = "";
+      if (responsibleFilter) responsibleFilter.value = "";
       break;
     case "over30":
       searchInput.value = "";
       statusFilter.value = "";
       daysFilter.value = "30";
       if (doctorFilter) doctorFilter.value = "";
+      if (responsibleFilter) responsibleFilter.value = "";
       break;
     case "over45":
       searchInput.value = "";
       statusFilter.value = "";
       daysFilter.value = "45";
       if (doctorFilter) doctorFilter.value = "";
+      if (responsibleFilter) responsibleFilter.value = "";
       break;
     case "over60":
       searchInput.value = "";
       statusFilter.value = "";
       daysFilter.value = "60";
       if (doctorFilter) doctorFilter.value = "";
+      if (responsibleFilter) responsibleFilter.value = "";
       break;
     default:
       // Para status específicos
@@ -127,6 +147,7 @@ function showFilteredPatients(filter) {
       statusFilter.value = filter;
       daysFilter.value = "";
       if (doctorFilter) doctorFilter.value = "";
+      if (responsibleFilter) responsibleFilter.value = "";
       break;
   }
 
@@ -148,50 +169,75 @@ function formatPhone(phone) {
   return "";
 }
 
+// Helper: construir o card de paciente
+function buildPatientCard(patient) {
+  const baseTs =
+    patient.lastContactAt || patient.visitDate || patient.createdAt;
+  const baseDays = daysSince(baseTs);
+  const infoLine = patient.lastContactAt
+    ? `<p>Último contato: ${new Date(patient.lastContactAt).toLocaleDateString("pt-BR")}</p>`
+    : patient.visitDate
+      ? `<p>Dias desde solicitação: ${baseDays}</p>`
+      : `<p>Dias desde cadastro: ${baseDays}</p>`;
+
+  const phoneDisplay = patient.phone ? formatPhone(patient.phone) : "";
+  const statusClass = patient.status.replace(/\s+/g, "-").toLowerCase();
+
+  return `
+    <div class="patient-card" data-status="${patient.status}">
+      <h4>${patient.name}</h4>
+      ${phoneDisplay ? `<p>Telefone: ${phoneDisplay}</p>` : ""}
+      <p>Médico: ${patient.doctor}</p>
+      ${patient.responsible ? `<p>Responsável: ${patient.responsible}</p>` : ""}
+      <p>Cirurgia: ${patient.surgeryType}</p>
+      ${infoLine}
+      <span class="badge status-${statusClass}">${patient.status}</span>
+      <div class="actions">
+        <button onclick="openWhatsApp('${patient.phone}', '${patient.name}', '${patient.doctor}', '${patient.surgeryType}', ${baseDays}, '${patient.id}')">📱 WhatsApp</button>
+        <button onclick="sendThankYou('${patient.phone}', '${patient.name}', '${patient.doctor}')">🙏 Agradecimento</button>
+        <button onclick="toggleContact('${patient.id}')" class="${patient.lastContactAt ? "contact-done" : "contact-pending"}">
+          ${patient.lastContactAt ? "✅ Contato realizado" : "📞 Fazer contato"}
+        </button>
+        ${patient.notes ? `<button onclick="viewNotes('${patient.name}', '${(patient.notes || "").replace(/'/g, "\\'")}')">👁️ Ver Obs</button>` : ""}
+        <button onclick="editPatient('${patient.id}')">✏️ Editar</button>
+        <button onclick="deletePatient('${patient.id}')">🗑️ Excluir</button>
+      </div>
+    </div>
+  `;
+}
+
 // Renderizar lista de pacientes
 export function renderPatients() {
   const search = searchInput.value;
   const status = statusFilter.value;
   const days = daysFilter.value ? parseInt(daysFilter.value) : null;
   const doctor = doctorFilter ? doctorFilter.value : "";
-  const filtered = filterPatients(search, status, days, doctor);
+  const responsible = responsibleFilter ? responsibleFilter.value : "";
+  const filtered = filterPatients(search, status, days, doctor, responsible);
 
-  patientsList.innerHTML = filtered
-    .map((patient) => {
-      const baseTs =
-        patient.lastContactAt || patient.visitDate || patient.createdAt;
-      const baseDays = daysSince(baseTs);
-      const urgency = getUrgency(baseDays);
+  // Se um status específico estiver selecionado, manter lista simples
+  if (status) {
+    patientsList.innerHTML = filtered.map(buildPatientCard).join("");
+    return;
+  }
 
-      const infoLine = patient.lastContactAt
-        ? `<p>Último contato: ${new Date(patient.lastContactAt).toLocaleDateString("pt-BR")}</p>`
-        : patient.visitDate
-          ? `<p>Dias desde solicitação: ${baseDays}</p>`
-          : `<p>Dias desde cadastro: ${baseDays}</p>`;
-
-      const phoneDisplay = patient.phone ? formatPhone(patient.phone) : "";
-
+  // Agrupar por situação quando nenhum status está selecionado
+  const baseFiltered = filterPatients(search, "", days, doctor, responsible);
+  const groupsHtml = statuses
+    .map((st) => {
+      const group = baseFiltered.filter((p) => p.status === st);
+      if (group.length === 0) return "";
+      const cards = group.map(buildPatientCard).join("");
       return `
-      <div class="patient-card" data-status="${patient.status}">
-        <h4>${patient.name}</h4>
-        ${phoneDisplay ? `<p>Telefone: ${phoneDisplay}</p>` : ""}
-        <p>Médico: ${patient.doctor}</p>
-        <p>Cirurgia: ${patient.surgeryType}</p>
-        ${infoLine}
-        <span class="badge status-${patient.status.replace(/\s+/g, "-").toLowerCase()}">${patient.status}</span>
-        <div class="actions">
-          <button onclick="openWhatsApp('${patient.phone}', '${patient.name}', '${patient.doctor}', '${patient.surgeryType}', ${baseDays}, '${patient.id}')">📱 WhatsApp</button>
-          <button onclick="toggleContact('${patient.id}')" class="${patient.lastContactAt ? "contact-done" : "contact-pending"}">
-            ${patient.lastContactAt ? "✅ Contato realizado" : "📞 Fazer contato"}
-          </button>
-          ${patient.notes ? `<button onclick="viewNotes('${patient.name}', '${patient.notes.replace(/'/g, "\\'")}')">👁️ Ver Obs</button>` : ""}
-          <button onclick="editPatient('${patient.id}')">✏️ Editar</button>
-          <button onclick="deletePatient('${patient.id}')">🗑️ Excluir</button>
-        </div>
-      </div>
-    `;
+        <section class="status-group" data-status-group="${st.replace(/\s+/g, "-").toLowerCase()}">
+          <h3 class="status-title">${displayStatusLabel(st)} <span class="status-count">(${group.length})</span></h3>
+          <div class="status-group-cards">${cards}</div>
+        </section>
+      `;
     })
     .join("");
+
+  patientsList.innerHTML = groupsHtml || "<p>Nenhum paciente encontrado.</p>";
 }
 
 // Funções globais para os botões
@@ -231,6 +277,57 @@ window.openWhatsApp = function (phone, name, doctor, surgery, days, patientId) {
   window.open(url, "_blank");
 };
 
+// Enviar mensagem de agradecimento pós-cirurgia
+window.sendThankYou = function (phone, name, doctor) {
+  const settings = getSettings();
+  const cc = (settings.countryCode || "55").replace(/\D/g, "");
+  const ddd = (settings.areaCode || "").replace(/\D/g, "");
+
+  // Normalizar número do paciente
+  let digits = String(phone || "").replace(/\D/g, "");
+
+  // Se faltar telefone, avisar
+  if (!digits) {
+    alert("Este paciente não possui telefone válido cadastrado.");
+    return;
+  }
+
+  // Prefixar DDD se configurado e número parecer sem DDD (8/9 dígitos) e não começar com o DDD
+  if (ddd && digits.length <= 9 && !digits.startsWith(ddd)) {
+    digits = ddd + digits;
+  }
+
+  // Montar número completo com código do país
+  const fullNumber = cc + digits;
+
+  // Garantir nome do médico
+  let docName = (doctor || "").trim();
+  if (!docName) {
+    docName = (
+      prompt("Informe o nome do médico para a mensagem:") || ""
+    ).trim();
+  }
+
+  const message = [
+    `Olá, ${name} 😊`,
+    "",
+    "A equipe da Oftalmo 15 agradece a confiança em nosso trabalho.",
+    "Sua cirurgia foi concluída com sucesso, e ficamos muito felizes em fazer parte desse momento tão importante.",
+    "",
+    `O procedimento foi realizado pelo Dr.(a) ${docName}, e agora inicia-se a fase de recuperação.`,
+    "",
+    "Qualquer dúvida, desconforto ou necessidade, estamos sempre à disposição para te ajudar.",
+    "",
+    "Desejamos uma recuperação tranquila e uma nova fase com mais qualidade de vida!",
+    "",
+    "Um abraço,",
+    "Equipe Oftalmo 15",
+  ].join("\n");
+
+  const url = `https://web.whatsapp.com/send?phone=${fullNumber}&text=${encodeURIComponent(message)}`;
+  window.open(url, "_blank");
+};
+
 window.toggleContact = async function (id) {
   const patients = getPatients();
   const patient = patients.find((p) => p.id === id);
@@ -249,9 +346,12 @@ window.editPatient = function (id) {
   const patient = patients.find((p) => p.id === id);
   if (patient) {
     currentEditId = id;
+    if (editResponsible) editResponsible.value = patient.responsible || "";
+    if (editDoctor) editDoctor.value = patient.doctor || "";
+    if (editPhone) editPhone.value = (patient.phone || "").replace(/\D/g, "");
     editStatus.value = patient.status;
     editNotes.value = patient.notes || "";
-    editModal.style.display = "block";
+    editModal.style.display = "flex"; // Usar flex para centralizar
   }
 };
 
@@ -312,6 +412,7 @@ export function setupEventListeners() {
       name: formData.get("name"),
       visitDate: formData.get("visitDate"),
       doctor: formData.get("doctor"),
+      responsible: formData.get("responsible") || "",
       surgeryType: formData.get("surgeryType"),
       notes: formData.get("notes"),
       phone: formData.get("phone"),
@@ -328,6 +429,8 @@ export function setupEventListeners() {
   statusFilter.addEventListener("change", renderPatients);
   daysFilter.addEventListener("change", renderPatients);
   if (doctorFilter) doctorFilter.addEventListener("change", renderPatients);
+  if (responsibleFilter)
+    responsibleFilter.addEventListener("change", renderPatients);
 
   // Relatório mensal
   document.getElementById("generateReport").addEventListener("click", () => {
@@ -362,6 +465,9 @@ export function setupEventListeners() {
     e.preventDefault();
     if (currentEditId) {
       const updatedData = {
+        responsible: editResponsible ? editResponsible.value : undefined,
+        doctor: editDoctor ? editDoctor.value : undefined,
+        phone: editPhone ? editPhone.value : undefined,
         status: editStatus.value,
         notes: editNotes.value,
       };

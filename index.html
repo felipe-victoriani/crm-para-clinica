@@ -79,6 +79,11 @@
                   <option value="Dr. Alberto">Dr. Alberto</option>
                   <option value="Dra. Fabiana">Dra. Fabiana</option>
                 </select>
+                <select name="responsible" required>
+                  <option value="">Responsável pelo paciente</option>
+                  <option value="Felipe">Felipe</option>
+                  <option value="Gabi">Gabi</option>
+                </select>
                 <input
                   type="text"
                   name="surgeryType"
@@ -96,16 +101,14 @@
                 <select name="status" required>
                   <option value="">Selecione a situação</option>
                   <option value="Paciente solicitado risco">
-                    Paciente solicitado risco
+                    Pedido de risco cirúrgico
                   </option>
                   <option value="Paciente agendou cirurgia">
-                    Paciente agendou cirurgia
+                    Agendou cirurgia
                   </option>
-                  <option value="Paciente fez cirurgia">
-                    Paciente fez cirurgia
-                  </option>
+                  <option value="Paciente fez cirurgia">Pós-cirurgia</option>
                   <option value="Paciente não quer operar">
-                    Paciente não quer operar
+                    Não vai operar
                   </option>
                 </select>
                 <button type="submit">Cadastrar</button>
@@ -124,20 +127,21 @@
                 <option value="Dr. Alberto">Dr. Alberto</option>
                 <option value="Dra. Fabiana">Dra. Fabiana</option>
               </select>
+              <select id="responsibleFilter">
+                <option value="">Todos os responsáveis</option>
+                <option value="Felipe">Felipe</option>
+                <option value="Gabi">Gabi</option>
+              </select>
               <select id="statusFilter">
                 <option value="">Todos os status</option>
                 <option value="Paciente solicitado risco">
-                  Paciente solicitado risco
+                  Pedido de risco cirúrgico
                 </option>
                 <option value="Paciente agendou cirurgia">
-                  Paciente agendou cirurgia
+                  Agendou cirurgia
                 </option>
-                <option value="Paciente fez cirurgia">
-                  Paciente fez cirurgia
-                </option>
-                <option value="Paciente não quer operar">
-                  Paciente não quer operar
-                </option>
+                <option value="Paciente fez cirurgia">Pós-cirurgia</option>
+                <option value="Paciente não quer operar">Não vai operar</option>
               </select>
               <select id="daysFilter">
                 <option value="">Todos os dias</option>
@@ -191,6 +195,9 @@
               </p>
             </form>
           </div>
+          <div class="modal-actions">
+            <button type="submit">Salvar Alterações</button>
+          </div>
         </section>
       </main>
     </div>
@@ -201,18 +208,35 @@
         <span class="close">&times;</span>
         <h2>Editar Paciente</h2>
         <form id="editForm">
+          <label for="editResponsible">Responsável:</label>
+          <select id="editResponsible" required>
+            <option value="">Selecione</option>
+            <option value="Felipe">Felipe</option>
+            <option value="Gabi">Gabi</option>
+          </select>
+          <label for="editDoctor">Médico:</label>
+          <select id="editDoctor" required>
+            <option value="">Selecione o médico</option>
+            <option value="Dr. Dante">Dr. Dante</option>
+            <option value="Dr. Alberto">Dr. Alberto</option>
+            <option value="Dra. Fabiana">Dra. Fabiana</option>
+          </select>
+          <label for="editPhone">Telefone:</label>
+          <input
+            id="editPhone"
+            type="tel"
+            placeholder="Telefone (somente números)"
+            pattern="[0-9]+"
+            required
+          />
           <label for="editStatus">Situação:</label>
           <select id="editStatus" required>
             <option value="Paciente solicitado risco">
-              Paciente solicitado risco
+              Pedido de risco cirúrgico
             </option>
-            <option value="Paciente agendou cirurgia">
-              Paciente agendou cirurgia
-            </option>
-            <option value="Paciente fez cirurgia">Paciente fez cirurgia</option>
-            <option value="Paciente não quer operar">
-              Paciente não quer operar
-            </option>
+            <option value="Paciente agendou cirurgia">Agendou cirurgia</option>
+            <option value="Paciente fez cirurgia">Pós-cirurgia</option>
+            <option value="Paciente não quer operar">Não vai operar</option>
           </select>
           <label for="editNotes">Observações (editar ou adicionar):</label>
           <textarea
