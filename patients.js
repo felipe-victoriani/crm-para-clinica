@@ -7,6 +7,8 @@ import {
   isFirebaseConfigured,
 } from "./database.js";
 
+const DEBUG = false;
+
 // Médicos fixos
 export const doctors = ["Dr. Dante", "Dr. Alberto", "Dra. Fabiana"];
 
@@ -71,23 +73,26 @@ export function cleanup() {
 
 // Função para corrigir pacientes sem createdAt
 export async function fixPatientsCreatedAt() {
-  console.log("Verificando pacientes sem createdAt...");
+  if (DEBUG) console.log("Verificando pacientes sem createdAt...");
   const patientsToFix = patients.filter((p) => !p.createdAt);
 
   if (patientsToFix.length > 0) {
-    console.log(`Encontrados ${patientsToFix.length} pacientes para corrigir`);
+    if (DEBUG)
+      console.log(
+        `Encontrados ${patientsToFix.length} pacientes para corrigir`,
+      );
 
     for (const patient of patientsToFix) {
-      console.log("Corrigindo paciente:", patient.id);
+      if (DEBUG) console.log("Corrigindo paciente:", patient.id);
       await updatePatient(patient.id, {
         createdAt: Date.now(),
         lastContactAt: patient.lastContactAt || null,
       });
     }
 
-    console.log("Correção concluída!");
+    if (DEBUG) console.log("Correção concluída!");
   } else {
-    console.log("Todos os pacientes já têm createdAt");
+    if (DEBUG) console.log("Todos os pacientes já têm createdAt");
   }
 }
 
