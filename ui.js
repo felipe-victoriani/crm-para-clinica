@@ -270,7 +270,7 @@ window.openWhatsApp = function (phone, name, doctor, surgery, days, patientId) {
   // Montar número completo com código do país
   const fullNumber = cc + digits;
 
-  const message = `Olá, ${name}. Desde a solicitação do risco cirúrgico pelo ${doctor} para a cirurgia de ${surgery}, seguimos à disposição para apoiar a continuidade do processo.`;
+  const message = `Olá, ${name}. Desde que o ${doctor} solicitou o risco cirúrgico para a cirurgia de ${surgery}, seguimos à disposição para apoiar você em todo o processo.`;
 
   // Usar WhatsApp Web (QR) — se não estiver logado, pedirá QR
   const url = `https://web.whatsapp.com/send?phone=${fullNumber}&text=${encodeURIComponent(message)}`;
