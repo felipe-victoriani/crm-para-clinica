@@ -270,7 +270,7 @@ window.openWhatsApp = function (phone, name, doctor, surgery, days, patientId) {
   // Montar número completo com código do país
   const fullNumber = cc + digits;
 
-  const message = `Olá, ${name}. Desde que o ${doctor} solicitou o risco cirúrgico para a cirurgia de ${surgery}, seguimos à disposição para apoiar você em todo o processo.`;
+  const message = `Bom dia! Aqui é da equipe da Oftalmo 15, verificamos que o(a) Sr(a) ${name} tinha realizado uma consulta com ${doctor}, e ele(a) sugeriu uma cirurgia, como não tivemos um retorno, entrei em contato para saber se está tudo bem e caso queira dar prosseguimento estamos à disposição. Lembrando! Que independente da cirurgia é recomendado retorno anual ao médico oftalmologista.`;
 
   // Usar WhatsApp Web (QR) — se não estiver logado, pedirá QR
   const url = `https://web.whatsapp.com/send?phone=${fullNumber}&text=${encodeURIComponent(message)}`;
