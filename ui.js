@@ -5,6 +5,9 @@ import {
   getDashboardStats,
   getDoctorStats,
   generateMonthlyReport,
+  generateAdvancedReport,
+  getUniqueDoctors,
+  exportReportToCSV,
   updatePatient,
   removePatient,
   addPatient,
@@ -745,16 +748,169 @@ export function setupEventListeners() {
     });
   }
 
-  // Relatório mensal
-  document.getElementById("generateReport").addEventListener("click", () => {
-    const report = generateMonthlyReport();
-    reportSection.innerHTML = `
-      <h3>Relatório Mensal - ${report.month}</h3>
-      <p>Pacientes cadastrados: ${report.totalPatients}</p>
-      <p>Pacientes que agendaram cirurgia: ${report.scheduledSurgeries}</p>
-      <p>Taxa de conversão: ${report.conversionRate}%</p>
+  // Inicializar dropdown de médicos no relatório
+  function initReportDoctors() {
+    const reportDoctor = document.getElementById("reportDoctor");
+    if (reportDoctor) {
+      const doctors = getUniqueDoctors();
+      // Limpar options exceto "Todos"
+      reportDoctor.innerHTML = '<option value="all">Todos</option>';
+      doctors.forEach((doc) => {
+        const option = document.createElement("option");
+        option.value = doc;
+        option.textContent = doc;
+        reportDoctor.appendChild(option);
+      });
+    }
+  }
+
+  // Renderizar relatório avançado
+  function renderAdvancedReport() {
+    const period = document.getElementById("reportPeriod").value;
+    const doctor = document.getElementById("reportDoctor").value;
+    const report = generateAdvancedReport(period, doctor);
+
+    const html = `
+      <div class="report-content">
+        <div class="report-header">
+          <h3>Relatório Detalhado</h3>
+          <p class="report-period">${report.periodLabel} ${doctor !== "all" ? `- Dr. ${doctor}` : ""}</p>
+        </div>
+
+        <div class="report-stats">
+          <div class="report-card">
+            <div class="report-card-title">Total de Pacientes</div>
+            <div class="report-card-value">${report.total}</div>
+            <div class="report-card-description">Cadastrados no período</div>
+          </div>
+
+          <div class="report-card">
+            <div class="report-card-title">Taxa de Conversão</div>
+            <div class="report-card-value">${report.conversionRate}%</div>
+            <div class="report-card-description">${report.scheduled} agendaram cirurgia</div>
+          </div>
+
+          <div class="report-card">
+            <div class="report-card-title">Taxa de Conclusão</div>
+            <div class="report-card-value">${report.completionRate}%</div>
+            <div class="report-card-description">${report.completed} realizaram cirurgia</div>
+          </div>
+
+          <div class="report-card">
+            <div class="report-card-title">Tempo Médio</div>
+            <div class="report-card-value">${report.avgDays}</div>
+            <div class="report-card-description">dias desde cadastro</div>
+          </div>
+
+          <div class="report-card">
+            <div class="report-card-title">Taxa de Contato</div>
+            <div class="report-card-value">${report.contactRate}%</div>
+            <div class="report-card-description">${report.contacted} pacientes contatados</div>
+          </div>
+
+          <div class="report-card">
+            <div class="report-card-title">Pacientes Críticos</div>
+            <div class="report-card-value" style="color: #dc3545;">${report.critical}</div>
+            <div class="report-card-description">60+ dias sem contato</div>
+          </div>
+        </div>
+
+        <div class="report-details">
+          <h4 class="report-section-title">Distribuição por Status</h4>
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Quantidade</th>
+                <th>Percentual</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${report.statusDistribution
+                .map(
+                  (item) => `
+                <tr>
+                  <td><span class="status-badge-report ${item.color}">${item.status}</span></td>
+                  <td>${item.count}</td>
+                  <td>${report.total > 0 ? ((item.count / report.total) * 100).toFixed(1) : 0}%</td>
+                </tr>
+              `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+
+          ${
+            report.doctorStats.length > 0
+              ? `
+          <h4 class="report-section-title">Performance por Médico</h4>
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Médico</th>
+                <th>Total</th>
+                <th>Agendaram</th>
+                <th>Realizaram</th>
+                <th>Taxa Conversão</th>
+                <th>Taxa Contato</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${report.doctorStats
+                .map(
+                  (doc) => `
+                <tr>
+                  <td><strong>${doc.doctor}</strong></td>
+                  <td>${doc.total}</td>
+                  <td>${doc.scheduled}</td>
+                  <td>${doc.completed}</td>
+                  <td>${doc.conversionRate}%</td>
+                  <td>${doc.contactRate}%</td>
+                </tr>
+              `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+          `
+              : ""
+          }
+        </div>
+      </div>
     `;
+
+    reportSection.innerHTML = html;
+  }
+
+  // Event listeners para relatórios
+  document.getElementById("generateReport").addEventListener("click", () => {
+    initReportDoctors();
+    renderAdvancedReport();
   });
+
+  document.getElementById("exportReport").addEventListener("click", () => {
+    const period = document.getElementById("reportPeriod").value;
+    const doctor = document.getElementById("reportDoctor").value;
+    const report = generateAdvancedReport(period, doctor);
+    const csv = exportReportToCSV(report);
+
+    // Criar e baixar arquivo
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `relatorio_${period}_${new Date().toISOString().split("T")[0]}.csv`,
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  });
+
+  // Inicializar médicos no relatório ao carregar
+  initReportDoctors();
 
   // Modal de edição
   closeModal.onclick = function () {

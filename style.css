@@ -1182,11 +1182,288 @@ header h1 {
 }
 
 .report {
-  background-color: white;
-  padding: 1rem;
+  background-color: var(--card-bg);
+  padding: 0;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px var(--shadow);
+  margin-top: 1rem;
+  min-height: 400px;
+}
+
+.report-filters {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  padding: 1rem;
+  background-color: var(--card-bg);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px var(--shadow);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 150px;
+}
+
+.filter-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-color);
+  opacity: 0.8;
+}
+
+.filter-group select {
+  padding: 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 0.7rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.btn-secondary {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.report-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  color: var(--text-color);
+  opacity: 0.5;
+  text-align: center;
+}
+
+.report-placeholder i {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.report-placeholder p {
+  font-size: 1rem;
+}
+
+.report-content {
+  padding: 1.5rem;
+}
+
+.report-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.report-header h3 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-color);
+  font-size: 1.5rem;
+}
+
+.report-header .report-period {
+  color: var(--text-color);
+  opacity: 0.7;
+  font-size: 0.95rem;
+}
+
+.report-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.report-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.report-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--shadow);
+}
+
+.report-card-title {
+  font-size: 0.85rem;
+  color: var(--text-color);
+  opacity: 0.7;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.report-card-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0.25rem 0;
+}
+
+.report-card-description {
+  font-size: 0.85rem;
+  color: var(--text-color);
+  opacity: 0.6;
+}
+
+.report-card-trend {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+.report-card-trend.positive {
+  color: #28a745;
+}
+
+.report-card-trend.negative {
+  color: #dc3545;
+}
+
+.report-card-trend.neutral {
+  color: #6c757d;
+}
+
+.report-details {
   margin-top: 2rem;
+}
+
+.report-section-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 2rem 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  background-color: var(--card-bg);
+}
+
+.report-table th,
+.report-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+
+.report-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dark-theme .report-table th {
+  background-color: #2a2a2a;
+}
+
+.report-table tbody tr:hover {
+  background-color: rgba(0, 123, 255, 0.05);
+}
+
+.report-table td {
+  font-size: 0.95rem;
+}
+
+.status-badge-report {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.status-badge-report.green {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-badge-report.blue {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-badge-report.gray {
+  background-color: #e2e3e5;
+  color: #383d41;
+}
+
+.status-badge-report.red {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.dark-theme .status-badge-report.green {
+  background-color: #155724;
+  color: #d4edda;
+}
+
+.dark-theme .status-badge-report.blue {
+  background-color: #0c5460;
+  color: #d1ecf1;
+}
+
+.dark-theme .status-badge-report.gray {
+  background-color: #383d41;
+  color: #e2e3e5;
+}
+
+.dark-theme .status-badge-report.red {
+  background-color: #721c24;
+  color: #f8d7da;
 }
 
 .login-container {
@@ -1649,6 +1926,64 @@ header h1 {
 
   .btn-action {
     min-width: 44px;
+  }
+
+  /* Relatórios mobile */
+  .report-filters {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .filter-group {
+    min-width: 100%;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .report-stats {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .report-card {
+    padding: 1rem;
+  }
+
+  .report-card-value {
+    font-size: 1.75rem;
+  }
+
+  .report-table {
+    font-size: 0.85rem;
+    display: block;
+    overflow-x: auto;
+  }
+
+  .report-table th,
+  .report-table td {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .report-section-title {
+    font-size: 1rem;
+  }
+
+  .report-content {
+    padding: 1rem;
+  }
+
+  .report-header h3 {
+    font-size: 1.25rem;
+  }
+
+  .status-badge-report {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
   }
 }
 

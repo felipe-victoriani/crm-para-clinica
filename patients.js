@@ -320,7 +320,7 @@ export function getDoctorStats() {
   });
 }
 
-// Relatório mensal
+// Relatório mensal (mantido para compatibilidade)
 export function generateMonthlyReport() {
   const now = new Date();
   const currentMonth = now.getMonth();
@@ -346,4 +346,233 @@ export function generateMonthlyReport() {
     scheduledSurgeries: scheduled,
     conversionRate: conversionRate,
   };
+}
+
+// Função auxiliar para filtrar pacientes por período
+function filterPatientsByPeriod(patients, period) {
+  const now = new Date();
+  let startDate = new Date();
+
+  switch (period) {
+    case "week":
+      startDate.setDate(now.getDate() - 7);
+      break;
+    case "month":
+      startDate.setMonth(now.getMonth() - 1);
+      break;
+    case "quarter":
+      startDate.setMonth(now.getMonth() - 3);
+      break;
+    case "year":
+      startDate.setFullYear(now.getFullYear() - 1);
+      break;
+    case "all":
+      startDate = new Date(0); // Desde sempre
+      break;
+  }
+
+  return patients.filter((p) => {
+    const created = new Date(p.createdAt);
+    return created >= startDate;
+  });
+}
+
+// Relatório avançado
+export function generateAdvancedReport(period = "month", doctorFilter = "all") {
+  let filteredPatients = filterPatientsByPeriod(patients, period);
+
+  // Filtrar por médico se especificado
+  if (doctorFilter !== "all") {
+    filteredPatients = filteredPatients.filter(
+      (p) => p.doctor === doctorFilter,
+    );
+  }
+
+  const now = new Date();
+
+  // Estatísticas básicas
+  const total = filteredPatients.length;
+  const requested = filteredPatients.filter(
+    (p) => p.status === "Paciente solicitado risco",
+  ).length;
+  const scheduled = filteredPatients.filter(
+    (p) => p.status === "Paciente agendou cirurgia",
+  ).length;
+  const completed = filteredPatients.filter(
+    (p) => p.status === "Paciente fez cirurgia",
+  ).length;
+  const declined = filteredPatients.filter(
+    (p) => p.status === "Paciente não quer operar",
+  ).length;
+
+  // Taxas
+  const conversionRate = total > 0 ? ((scheduled / total) * 100).toFixed(1) : 0;
+  const completionRate = total > 0 ? ((completed / total) * 100).toFixed(1) : 0;
+  const declineRate = total > 0 ? ((declined / total) * 100).toFixed(1) : 0;
+
+  // Contatos
+  const contacted = filteredPatients.filter((p) => p.lastContactAt).length;
+  const contactRate = total > 0 ? ((contacted / total) * 100).toFixed(1) : 0;
+
+  // Agradecimentos
+  const thanked = filteredPatients.filter((p) => p.thankYouSentAt).length;
+  const thankRate = total > 0 ? ((thanked / total) * 100).toFixed(1) : 0;
+
+  // Pacientes críticos (60+ dias)
+  const critical = filteredPatients.filter((p) => {
+    const baseTs = p.lastContactAt || p.visitDate || p.createdAt;
+    const days = Math.floor((now - new Date(baseTs)) / (1000 * 60 * 60 * 24));
+    return days >= 60;
+  }).length;
+
+  // Tempo médio
+  let totalDays = 0;
+  filteredPatients.forEach((p) => {
+    const baseTs = p.lastContactAt || p.visitDate || p.createdAt;
+    const days = Math.floor((now - new Date(baseTs)) / (1000 * 60 * 60 * 24));
+    totalDays += days;
+  });
+  const avgDays = total > 0 ? Math.round(totalDays / total) : 0;
+
+  // Distribuição por status
+  const statusDistribution = [
+    { status: "Solicitado Risco", count: requested, color: "green" },
+    { status: "Agendou Cirurgia", count: scheduled, color: "blue" },
+    { status: "Fez Cirurgia", count: completed, color: "gray" },
+    { status: "Não Quer Operar", count: declined, color: "red" },
+  ];
+
+  // Relatório por médico
+  const doctorStats = {};
+  filteredPatients.forEach((p) => {
+    if (!doctorStats[p.doctor]) {
+      doctorStats[p.doctor] = {
+        total: 0,
+        scheduled: 0,
+        completed: 0,
+        declined: 0,
+        contacted: 0,
+      };
+    }
+    doctorStats[p.doctor].total++;
+    if (p.status === "Paciente agendou cirurgia")
+      doctorStats[p.doctor].scheduled++;
+    if (p.status === "Paciente fez cirurgia") doctorStats[p.doctor].completed++;
+    if (p.status === "Paciente não quer operar")
+      doctorStats[p.doctor].declined++;
+    if (p.lastContactAt) doctorStats[p.doctor].contacted++;
+  });
+
+  // Converter para array e calcular taxas
+  const doctorArray = Object.keys(doctorStats).map((doctor) => {
+    const stats = doctorStats[doctor];
+    return {
+      doctor,
+      total: stats.total,
+      scheduled: stats.scheduled,
+      completed: stats.completed,
+      declined: stats.declined,
+      contacted: stats.contacted,
+      conversionRate:
+        stats.total > 0
+          ? ((stats.scheduled / stats.total) * 100).toFixed(1)
+          : 0,
+      contactRate:
+        stats.total > 0
+          ? ((stats.contacted / stats.total) * 100).toFixed(1)
+          : 0,
+    };
+  });
+
+  // Ordenar por total decrescente
+  doctorArray.sort((a, b) => b.total - a.total);
+
+  return {
+    period,
+    periodLabel: getPeriodLabel(period),
+    total,
+    requested,
+    scheduled,
+    completed,
+    declined,
+    conversionRate,
+    completionRate,
+    declineRate,
+    contacted,
+    contactRate,
+    thanked,
+    thankRate,
+    critical,
+    avgDays,
+    statusDistribution,
+    doctorStats: doctorArray,
+    patients: filteredPatients,
+  };
+}
+
+function getPeriodLabel(period) {
+  const labels = {
+    week: "Última Semana",
+    month: "Último Mês",
+    quarter: "Último Trimestre",
+    year: "Último Ano",
+    all: "Todo o Período",
+  };
+  return labels[period] || "Período Personalizado";
+}
+
+// Obter lista de médicos únicos
+export function getUniqueDoctors() {
+  const doctors = new Set();
+  patients.forEach((p) => {
+    if (p.doctor) doctors.add(p.doctor);
+  });
+  return Array.from(doctors).sort();
+}
+
+// Exportar relatório para CSV
+export function exportReportToCSV(reportData) {
+  let csv = "Relatório de Pacientes - Oftalmo 15\n\n";
+
+  // Cabeçalho
+  csv += `Período:,${reportData.periodLabel}\n`;
+  csv += `Data de Geração:,${new Date().toLocaleString("pt-BR")}\n\n`;
+
+  // Estatísticas gerais
+  csv += "ESTATÍSTICAS GERAIS\n";
+  csv += `Total de Pacientes,${reportData.total}\n`;
+  csv += `Solicitaram Risco,${reportData.requested}\n`;
+  csv += `Agendaram Cirurgia,${reportData.scheduled}\n`;
+  csv += `Realizaram Cirurgia,${reportData.completed}\n`;
+  csv += `Não Querem Operar,${reportData.declined}\n`;
+  csv += `Taxa de Conversão,${reportData.conversionRate}%\n`;
+  csv += `Taxa de Conclusão,${reportData.completionRate}%\n`;
+  csv += `Pacientes Contatados,${reportData.contacted} (${reportData.contactRate}%)\n`;
+  csv += `Agradecimentos Enviados,${reportData.thanked} (${reportData.thankRate}%)\n`;
+  csv += `Pacientes Críticos (60+ dias),${reportData.critical}\n`;
+  csv += `Tempo Médio (dias),${reportData.avgDays}\n\n`;
+
+  // Distribuição por status
+  csv += "DISTRIBUIÇÃO POR STATUS\n";
+  csv += "Status,Quantidade,Percentual\n";
+  reportData.statusDistribution.forEach((item) => {
+    const percent =
+      reportData.total > 0
+        ? ((item.count / reportData.total) * 100).toFixed(1)
+        : 0;
+    csv += `${item.status},${item.count},${percent}%\n`;
+  });
+  csv += "\n";
+
+  // Relatório por médico
+  if (reportData.doctorStats.length > 0) {
+    csv += "RELATÓRIO POR MÉDICO\n";
+    csv +=
+      "Médico,Total,Agendaram,Realizaram,Declinaram,Contatados,Taxa Conversão,Taxa Contato\n";
+    reportData.doctorStats.forEach((doc) => {
+      csv += `${doc.doctor},${doc.total},${doc.scheduled},${doc.completed},${doc.declined},${doc.contacted},${doc.conversionRate}%,${doc.contactRate}%\n`;
+    });
+  }
+
+  return csv;
 }
