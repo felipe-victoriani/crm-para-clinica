@@ -14,6 +14,9 @@
   </head>
   <body>
     <header>
+      <button id="menuToggle" class="menu-toggle" title="Menu">
+        <i class="fas fa-bars"></i>
+      </button>
       <h1>CRM - Controle de Pacientes de Risco Cirúrgico-Oftalmo 15</h1>
       <div class="header-controls">
         <button id="themeToggle" title="Alternar Tema">
@@ -61,10 +64,55 @@
         </section>
 
         <section id="patients-section" class="section">
-          <h2>Gestão de Pacientes</h2>
+          <div class="section-header">
+            <h2>
+              Gestão de Pacientes
+              <span id="patientsCounter" class="section-counter"></span>
+            </h2>
+            <div class="view-controls">
+              <div class="sort-control">
+                <label><i class="fas fa-sort"></i></label>
+                <select id="sortSelect">
+                  <option value="urgency">Urgência</option>
+                  <option value="name">Nome (A-Z)</option>
+                  <option value="recent">Mais recentes</option>
+                  <option value="oldest">Mais antigos</option>
+                  <option value="doctor">Médico</option>
+                </select>
+              </div>
+              <div class="view-toggle">
+                <button
+                  id="viewGrid"
+                  class="view-btn active"
+                  title="Visualização em grade"
+                >
+                  <i class="fas fa-th"></i>
+                </button>
+                <button
+                  id="viewList"
+                  class="view-btn"
+                  title="Visualização em lista"
+                >
+                  <i class="fas fa-list"></i>
+                </button>
+              </div>
+            </div>
+          </div>
           <div class="patients-container">
             <div class="form-section">
-              <h3>Cadastrar Paciente</h3>
+              <div class="form-header">
+                <h3>
+                  <i class="fas fa-user-plus"></i> Cadastrar Novo Paciente
+                </h3>
+                <button
+                  type="button"
+                  id="resetForm"
+                  class="btn-reset"
+                  title="Limpar formulário"
+                >
+                  <i class="fas fa-redo"></i> Limpar
+                </button>
+              </div>
               <form id="patientForm">
                 <input
                   type="text"
@@ -149,6 +197,13 @@
                 <option value="45">45+ dias</option>
                 <option value="60">60+ dias</option>
               </select>
+              <button
+                id="clearFilters"
+                class="clear-filters-btn"
+                title="Limpar todos os filtros"
+              >
+                <i class="fas fa-times-circle"></i> Limpar Filtros
+              </button>
             </div>
 
             <div id="patientsList" class="patients-list">

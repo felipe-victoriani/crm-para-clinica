@@ -3,6 +3,7 @@ import {
   getPatients,
   filterPatients,
   getDashboardStats,
+  getDoctorStats,
   generateMonthlyReport,
   updatePatient,
   removePatient,
@@ -10,6 +11,7 @@ import {
   daysSince,
   getUrgency,
   statuses,
+  doctors,
 } from "./patients.js";
 import { isFirebaseConfigured } from "./database.js";
 
@@ -56,40 +58,122 @@ function displayStatusLabel(status) {
 // Renderizar dashboard
 export function renderDashboard() {
   const stats = getDashboardStats();
-  const storageMode = isFirebaseConfigured
-    ? "Firebase (Tempo Real)"
-    : "LocalStorage (Mock)";
+  const doctorStats = getDoctorStats();
 
   dashboard.innerHTML = `
-    <div class="card storage-mode">
-      <h3>Modo de Armazenamento</h3>
-      <p class="${isFirebaseConfigured ? "firebase-mode" : "mock-mode"}">${storageMode}</p>
-    </div>
-    <div class="card clickable" data-filter="all">
-      <h3>Total de Pacientes</h3>
-      <p>${stats.total}</p>
-    </div>
-    ${statuses
-      .map(
-        (status, i) => `
-      <div class="card clickable" data-filter="${status}">
-        <h3>${displayStatusLabel(status)}</h3>
-        <p>${stats.byStatus[i]}</p>
+    <div class="dashboard-section">
+      <h3 class="section-title">📊 Visão Geral</h3>
+      <div class="mini-cards-grid">
+        <div class="mini-card clickable" data-filter="all">
+          <span class="mini-card-icon">👥</span>
+          <div class="mini-card-content">
+            <span class="mini-card-value">${stats.total}</span>
+            <span class="mini-card-label">Total</span>
+          </div>
+        </div>
+        <div class="mini-card new-month">
+          <span class="mini-card-icon">✨</span>
+          <div class="mini-card-content">
+            <span class="mini-card-value">${stats.newThisMonth}</span>
+            <span class="mini-card-label">Novos no mês</span>
+          </div>
+        </div>
+        <div class="mini-card clickable" data-filter="over30">
+          <span class="mini-card-icon">⏱️</span>
+          <div class="mini-card-content">
+            <span class="mini-card-value">${stats.over30}</span>
+            <span class="mini-card-label">30+ dias</span>
+          </div>
+        </div>
+        <div class="mini-card clickable" data-filter="over45">
+          <span class="mini-card-icon">⚠️</span>
+          <div class="mini-card-content">
+            <span class="mini-card-value">${stats.over45}</span>
+            <span class="mini-card-label">45+ dias</span>
+          </div>
+        </div>
+        <div class="mini-card clickable ${stats.over60 > 0 ? "urgent" : ""}" data-filter="over60">
+          <span class="mini-card-icon">🚨</span>
+          <div class="mini-card-content">
+            <span class="mini-card-value">${stats.over60}</span>
+            <span class="mini-card-label">60+ dias</span>
+          </div>
+        </div>
       </div>
-    `,
-      )
-      .join("")}
-    <div class="card clickable" data-filter="over30">
-      <h3>30+ dias sem contato</h3>
-      <p>${stats.over30}</p>
     </div>
-    <div class="card clickable" data-filter="over45">
-      <h3>45+ dias</h3>
-      <p>${stats.over45}</p>
-    </div>
-    <div class="card clickable" data-filter="over60">
-      <h3>60+ dias</h3>
-      <p>${stats.over60}</p>
+
+    <div class="dashboard-section">
+      <h3 class="section-title">👨‍⚕️ Médicos</h3>
+      <div class="doctors-grid">
+        ${doctorStats
+          .map((doctor, index) => {
+            const doctorClass = [
+              "doctor-dante",
+              "doctor-alberto",
+              "doctor-fabiana",
+            ][index];
+            const doctorIcons = ["👨‍⚕️", "🧑‍⚕️", "👩‍⚕️"];
+            const doctorIcon = doctorIcons[index] || "👨‍⚕️";
+
+            return `
+          <div class="doctor-card ${doctorClass} ${doctor.over60 > 0 ? "has-urgent" : ""} ${doctor.total === 0 ? "no-patients" : ""}" data-doctor="${doctor.name}">
+            <div class="doctor-header">
+              <div class="doctor-title">
+                <span class="doctor-icon">${doctorIcon}</span>
+                <h4>${doctor.name}</h4>
+              </div>
+              <span class="doctor-total">${doctor.total} paciente${doctor.total !== 1 ? "s" : ""}</span>
+            </div>
+            ${
+              doctor.total === 0
+                ? `
+              <div class="no-patients-msg">
+                <span>📭 Nenhum paciente atribuído</span>
+              </div>
+            `
+                : `
+            <div class="doctor-stats">
+              <div class="stat-badges">
+                <span class="badge badge-risk clickable" data-filter="${doctor.name}:Paciente solicitado risco" title="Pedido de risco">
+                  🩺 ${doctor.byStatus[0]}
+                </span>
+                <span class="badge badge-scheduled clickable" data-filter="${doctor.name}:Paciente agendou cirurgia" title="Agendou cirurgia">
+                  📅 ${doctor.byStatus[1]}
+                </span>
+                <span class="badge badge-surgery clickable" data-filter="${doctor.name}:Paciente fez cirurgia" title="Pós-cirurgia">
+                  ✅ ${doctor.byStatus[2]}
+                </span>
+                <span class="badge badge-no-surgery clickable" data-filter="${doctor.name}:Paciente não quer operar" title="Não vai operar">
+                  ❌ ${doctor.byStatus[3]}
+                </span>
+              </div>
+              ${
+                doctor.over60 > 0
+                  ? `
+                <div class="urgent-alert pulse">
+                  🚨 ${doctor.over60} paciente${doctor.over60 > 1 ? "s" : ""} com 60+ dias
+                </div>
+              `
+                  : ""
+              }
+              <div class="doctor-metrics">
+                <div class="metric">
+                  <span class="metric-label">Média de tempo:</span>
+                  <span class="metric-value">${doctor.avgDays} dias</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Conversão:</span>
+                  <span class="metric-value conversion">${doctor.conversionRate}%</span>
+                </div>
+              </div>
+            </div>
+            `
+            }
+          </div>
+        `;
+          })
+          .join("")}
+      </div>
     </div>
   `;
 
@@ -101,6 +185,20 @@ export function renderDashboard() {
       showFilteredPatients(filter);
     });
   });
+
+  // Adicionar event listeners para os cards de médicos
+  const doctorCards = dashboard.querySelectorAll(".doctor-card");
+  doctorCards.forEach((card) => {
+    if (!card.classList.contains("clickable")) {
+      card.addEventListener("click", (e) => {
+        // Evitar conflito com cliques em badges
+        if (!e.target.closest(".badge")) {
+          const doctorName = card.dataset.doctor;
+          showFilteredPatients(doctorName);
+        }
+      });
+    }
+  });
 }
 
 // Função para mostrar pacientes filtrados
@@ -109,6 +207,27 @@ function showFilteredPatients(filter) {
   const patientsLink = document.querySelector('[data-section="patients"]');
   if (patientsLink) {
     patientsLink.click();
+  }
+
+  // Verificar se é filtro combinado (médico:status)
+  if (filter.includes(":")) {
+    const [doctorName, status] = filter.split(":");
+    searchInput.value = "";
+    if (doctorFilter) doctorFilter.value = doctorName;
+    statusFilter.value = status;
+    daysFilter.value = "";
+    renderPatients();
+    return;
+  }
+
+  // Verificar se é nome de médico
+  if (doctors.includes(filter)) {
+    searchInput.value = "";
+    if (doctorFilter) doctorFilter.value = filter;
+    statusFilter.value = "";
+    daysFilter.value = "";
+    renderPatients();
+    return;
   }
 
   // Aplicar filtro correspondente
@@ -178,32 +297,113 @@ function buildPatientCard(patient) {
     ? `<p>Último contato: ${new Date(patient.lastContactAt).toLocaleDateString("pt-BR")}</p>`
     : patient.visitDate
       ? `<p>Dias desde solicitação: ${baseDays}</p>`
-      : `<p>Dias desde cadastro: ${baseDays}</p>`;
+      : `<span class="days-info"><i class="fas fa-clock"></i> ${baseDays} dias desde cadastro</span>`;
 
   const phoneDisplay = patient.phone ? formatPhone(patient.phone) : "";
   const statusClass = patient.status.replace(/\s+/g, "-").toLowerCase();
 
+  // Classe baseada no status (não no tempo)
+  const categoryClass = statusClass;
+
+  // Determinar cor do badge de dias
+  const daysClass =
+    baseDays >= 60
+      ? "critical"
+      : baseDays >= 45
+        ? "high"
+        : baseDays >= 30
+          ? "medium"
+          : "low";
+
   return `
-    <div class="patient-card" data-status="${patient.status}">
-      <h4>${patient.name}</h4>
-      ${phoneDisplay ? `<p>Telefone: ${phoneDisplay}</p>` : ""}
-      <p>Médico: ${patient.doctor}</p>
-      ${patient.responsible ? `<p>Responsável: ${patient.responsible}</p>` : ""}
-      <p>Cirurgia: ${patient.surgeryType}</p>
-      ${infoLine}
-      <span class="badge status-${statusClass}">${patient.status}</span>
-      <div class="actions">
-        <button onclick="openWhatsApp('${patient.phone}', '${patient.name}', '${patient.doctor}', '${patient.surgeryType}', ${baseDays}, '${patient.id}')">📱 WhatsApp</button>
-        <button onclick="sendThankYou('${patient.phone}', '${patient.name}', '${patient.doctor}')">🙏 Agradecimento</button>
-        <button onclick="toggleContact('${patient.id}')" class="${patient.lastContactAt ? "contact-done" : "contact-pending"}">
-          ${patient.lastContactAt ? "✅ Contato realizado" : "📞 Fazer contato"}
+    <div class="patient-card status-${categoryClass}" data-status="${patient.status}" data-id="${patient.id}">
+      <div class="patient-card-header">
+        <div class="patient-header-left">
+          <h3 class="patient-name">${patient.name}</h3>
+          <span class="patient-status">${displayStatusLabel(patient.status)}</span>
+        </div>
+        <span class="urgency-badge ${daysClass}">${baseDays} dias</span>
+      </div>
+      
+      <div class="patient-card-body">
+        <div class="patient-info-row">
+          <span class="info-label">Médico:</span>
+          <span>${patient.doctor}</span>
+        </div>
+        ${
+          patient.responsible
+            ? `
+        <div class="patient-info-row">
+          <span class="info-label">Responsável:</span>
+          <span>${patient.responsible}</span>
+        </div>
+        `
+            : ""
+        }
+        <div class="patient-info-row">
+          <span class="info-label">Cirurgia:</span>
+          <span>${patient.surgeryType}</span>
+        </div>
+        ${
+          phoneDisplay
+            ? `
+        <div class="patient-info-row">
+          <span class="info-label">Telefone:</span>
+          <span>${phoneDisplay}</span>
+        </div>
+        `
+            : ""
+        }
+      </div>
+      
+      <div class="patient-card-actions">
+        <button class="btn-action" onclick="openWhatsApp('${patient.phone}', '${patient.name}', '${patient.doctor}', '${patient.surgeryType}', ${baseDays}, '${patient.id}')" title="WhatsApp">
+          <i class="fab fa-whatsapp"></i>
         </button>
-        ${patient.notes ? `<button onclick="viewNotes('${patient.name}', '${(patient.notes || "").replace(/'/g, "\\'")}')">👁️ Ver Obs</button>` : ""}
-        <button onclick="editPatient('${patient.id}')">✏️ Editar</button>
-        <button onclick="deletePatient('${patient.id}')">🗑️ Excluir</button>
+        <button class="btn-action ${patient.thankYouSentAt ? "btn-thanked" : ""}" onclick="sendThankYou('${patient.phone}', '${patient.name}', '${patient.doctor}', '${patient.id}')" title="${patient.thankYouSentAt ? "Agradecimento enviado" : "Enviar agradecimento"}">
+          <i class="fas fa-heart"></i>
+        </button>
+        <button class="btn-action ${patient.lastContactAt ? "btn-contacted" : ""}" onclick="toggleContact('${patient.id}')" title="${patient.lastContactAt ? "Contato realizado" : "Registrar contato"}">
+          <i class="fas ${patient.lastContactAt ? "fa-check-circle" : "fa-phone-alt"}"></i>
+        </button>
+        ${patient.notes ? `<button class="btn-action" onclick="viewNotes('${patient.name}', '${(patient.notes || "").replace(/'/g, "\\'")}')"><i class="fas fa-sticky-note"></i></button>` : ""}
+        <button class="btn-action" onclick="editPatient('${patient.id}')" title="Editar">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="btn-action btn-delete" onclick="deletePatient('${patient.id}')" title="Excluir">
+          <i class="fas fa-trash"></i>
+        </button>
       </div>
     </div>
   `;
+}
+
+// Função para ordenar pacientes
+function sortPatients(patients, sortBy) {
+  const sorted = [...patients];
+
+  switch (sortBy) {
+    case "name":
+      return sorted.sort((a, b) => a.name.localeCompare(b.name));
+    case "recent":
+      return sorted.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    case "oldest":
+      return sorted.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    case "doctor":
+      return sorted.sort((a, b) => a.doctor.localeCompare(b.doctor));
+    case "urgency":
+    default:
+      // Já vem ordenado por urgência do filterPatients
+      return sorted;
+  }
+}
+
+// Atualizar contador de pacientes
+function updatePatientsCounter(count) {
+  const counter = document.getElementById("patientsCounter");
+  if (counter) {
+    counter.textContent = `(${count})`;
+  }
 }
 
 // Renderizar lista de pacientes
@@ -213,7 +413,19 @@ export function renderPatients() {
   const days = daysFilter.value ? parseInt(daysFilter.value) : null;
   const doctor = doctorFilter ? doctorFilter.value : "";
   const responsible = responsibleFilter ? responsibleFilter.value : "";
-  const filtered = filterPatients(search, status, days, doctor, responsible);
+  let filtered = filterPatients(search, status, days, doctor, responsible);
+
+  // Aplicar ordenação se definida
+  const sortBy = localStorage.getItem("patientsSortBy") || "urgency";
+  filtered = sortPatients(filtered, sortBy);
+
+  // Atualizar contador
+  updatePatientsCounter(filtered.length);
+
+  // Verificar modo de visualização
+  const viewMode = localStorage.getItem("patientsViewMode") || "grid";
+  patientsList.className =
+    viewMode === "list" ? "patients-list list-view" : "patients-list grid-view";
 
   // Se um status específico estiver selecionado, manter lista simples
   if (status) {
@@ -278,7 +490,7 @@ window.openWhatsApp = function (phone, name, doctor, surgery, days, patientId) {
 };
 
 // Enviar mensagem de agradecimento pós-cirurgia
-window.sendThankYou = function (phone, name, doctor) {
+window.sendThankYou = async function (phone, name, doctor, id) {
   const settings = getSettings();
   const cc = (settings.countryCode || "55").replace(/\D/g, "");
   const ddd = (settings.areaCode || "").replace(/\D/g, "");
@@ -326,6 +538,13 @@ window.sendThankYou = function (phone, name, doctor) {
 
   const url = `https://web.whatsapp.com/send?phone=${fullNumber}&text=${encodeURIComponent(message)}`;
   window.open(url, "_blank");
+
+  // Registrar que o agradecimento foi enviado
+  if (id) {
+    await updatePatient(id, { thankYouSentAt: Date.now() });
+    renderDashboard();
+    renderPatients();
+  }
 };
 
 window.toggleContact = async function (id) {
@@ -394,6 +613,39 @@ export function setupEventListeners() {
     // Salvar preferência
     localStorage.setItem("theme", isDark ? "dark" : "light");
   });
+
+  // Menu hamburguer mobile
+  const menuToggle = document.getElementById("menuToggle");
+  const sidebar = document.querySelector(".sidebar");
+
+  // Criar overlay
+  const overlay = document.createElement("div");
+  overlay.className = "sidebar-overlay";
+  document.body.appendChild(overlay);
+
+  if (menuToggle) {
+    menuToggle.addEventListener("click", () => {
+      sidebar.classList.toggle("active");
+      overlay.classList.toggle("active");
+    });
+
+    overlay.addEventListener("click", () => {
+      sidebar.classList.remove("active");
+      overlay.classList.remove("active");
+    });
+
+    // Fechar menu ao clicar em um link
+    const navLinks = document.querySelectorAll(".nav-link");
+    navLinks.forEach((link) => {
+      link.addEventListener("click", () => {
+        if (window.innerWidth <= 768) {
+          sidebar.classList.remove("active");
+          overlay.classList.remove("active");
+        }
+      });
+    });
+  }
+
   // Navegação lateral
   const navLinks = document.querySelectorAll(".nav-link");
   navLinks.forEach((link) => {
@@ -431,6 +683,67 @@ export function setupEventListeners() {
   if (doctorFilter) doctorFilter.addEventListener("change", renderPatients);
   if (responsibleFilter)
     responsibleFilter.addEventListener("change", renderPatients);
+
+  // Botão Limpar Filtros
+  const clearFiltersBtn = document.getElementById("clearFilters");
+  if (clearFiltersBtn) {
+    clearFiltersBtn.addEventListener("click", () => {
+      searchInput.value = "";
+      statusFilter.value = "";
+      daysFilter.value = "";
+      if (doctorFilter) doctorFilter.value = "";
+      if (responsibleFilter) responsibleFilter.value = "";
+      renderPatients();
+    });
+  }
+
+  // Controles de visualização
+  const viewGrid = document.getElementById("viewGrid");
+  const viewList = document.getElementById("viewList");
+  const sortSelect = document.getElementById("sortSelect");
+  const resetForm = document.getElementById("resetForm");
+
+  // Restaurar modo de visualização salvo
+  const savedViewMode = localStorage.getItem("patientsViewMode") || "grid";
+  if (savedViewMode === "list") {
+    viewList.classList.add("active");
+    viewGrid.classList.remove("active");
+  }
+
+  // Restaurar ordenação salva
+  const savedSortBy = localStorage.getItem("patientsSortBy") || "urgency";
+  if (sortSelect) sortSelect.value = savedSortBy;
+
+  if (viewGrid) {
+    viewGrid.addEventListener("click", () => {
+      localStorage.setItem("patientsViewMode", "grid");
+      viewGrid.classList.add("active");
+      viewList.classList.remove("active");
+      renderPatients();
+    });
+  }
+
+  if (viewList) {
+    viewList.addEventListener("click", () => {
+      localStorage.setItem("patientsViewMode", "list");
+      viewList.classList.add("active");
+      viewGrid.classList.remove("active");
+      renderPatients();
+    });
+  }
+
+  if (sortSelect) {
+    sortSelect.addEventListener("change", () => {
+      localStorage.setItem("patientsSortBy", sortSelect.value);
+      renderPatients();
+    });
+  }
+
+  if (resetForm) {
+    resetForm.addEventListener("click", () => {
+      patientForm.reset();
+    });
+  }
 
   // Relatório mensal
   document.getElementById("generateReport").addEventListener("click", () => {

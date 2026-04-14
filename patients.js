@@ -259,7 +259,65 @@ export function getDashboardStats() {
     (p) => daysSince(p.lastContactAt || p.visitDate || p.createdAt) >= 60,
   ).length;
 
-  return { total, byStatus, over30, over45, over60 };
+  // Pacientes novos no mês atual
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const newThisMonth = patients.filter((p) => {
+    const created = new Date(p.createdAt);
+    return (
+      created.getMonth() === currentMonth &&
+      created.getFullYear() === currentYear
+    );
+  }).length;
+
+  return { total, byStatus, over30, over45, over60, newThisMonth };
+}
+
+// Estatísticas por médico
+export function getDoctorStats() {
+  const stats = doctors.map((doctor) => {
+    const doctorPatients = patients.filter((p) => p.doctor === doctor);
+    const total = doctorPatients.length;
+    const byStatus = statuses.map(
+      (status) => doctorPatients.filter((p) => p.status === status).length,
+    );
+    const over60 = doctorPatients.filter(
+      (p) => daysSince(p.lastContactAt || p.visitDate || p.createdAt) >= 60,
+    ).length;
+    const scheduled = doctorPatients.filter(
+      (p) => p.status === "Paciente agendou cirurgia",
+    ).length;
+    const conversionRate =
+      total > 0 ? ((scheduled / total) * 100).toFixed(1) : 0;
+
+    // Calcular média de tempo desde último contato
+    const avgDays =
+      total > 0
+        ? Math.round(
+            doctorPatients.reduce(
+              (sum, p) =>
+                sum + daysSince(p.lastContactAt || p.visitDate || p.createdAt),
+              0,
+            ) / total,
+          )
+        : 0;
+
+    return {
+      name: doctor,
+      total,
+      byStatus,
+      over60,
+      conversionRate,
+      avgDays,
+    };
+  });
+
+  // Ordenar: primeiro por pacientes urgentes (60+), depois por total de pacientes
+  return stats.sort((a, b) => {
+    if (b.over60 !== a.over60) return b.over60 - a.over60;
+    return b.total - a.total;
+  });
 }
 
 // Relatório mensal

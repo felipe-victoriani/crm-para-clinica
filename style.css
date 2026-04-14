@@ -38,6 +38,15 @@ body {
     color 0.3s;
 }
 
+/* Prevenir overflow horizontal em todos os elementos */
+img,
+video,
+iframe,
+table {
+  max-width: 100%;
+  height: auto;
+}
+
 header {
   background-color: var(--header-bg);
   color: white;
@@ -46,6 +55,30 @@ header {
   justify-content: space-between;
   align-items: center;
   transition: background-color 0.3s;
+  position: relative;
+}
+
+.menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.menu-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+header h1 {
+  flex: 1;
+  text-align: center;
+  font-size: 1.5rem;
+  margin: 0 1rem;
 }
 
 .header-controls {
@@ -152,9 +185,345 @@ header {
 }
 
 .dashboard {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.dashboard-section {
+  display: flex;
+  flex-direction: column;
   gap: 0.75rem;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0;
+  padding-left: 0.25rem;
+}
+
+/* Mini Cards - Visão Geral */
+.mini-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.mini-card {
+  background-color: var(--card-bg);
+  padding: 0.75rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px var(--shadow);
+  border-left: 4px solid #28a745;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.mini-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px var(--shadow);
+}
+
+.mini-card.urgent {
+  border-left-color: #dc3545;
+  border-left-width: 6px;
+}
+
+.mini-card.new-month {
+  border-left-color: #17a2b8;
+  cursor: default;
+}
+
+.mini-card.new-month:hover {
+  transform: none;
+}
+
+.mini-card-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.mini-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.mini-card-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-color);
+}
+
+.mini-card-label {
+  font-size: 0.75rem;
+  color: var(--text-color);
+  opacity: 0.7;
+}
+
+/* Doctor Cards */
+.doctors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.doctor-card {
+  background-color: var(--card-bg);
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px var(--shadow);
+  border-left: 4px solid transparent;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.doctor-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px var(--shadow);
+}
+
+/* Bordas coloridas para cada médico */
+.doctor-card.doctor-dante {
+  border-left-color: #007bff;
+}
+
+.doctor-card.doctor-alberto {
+  border-left-color: #fd7e14;
+}
+
+.doctor-card.doctor-fabiana {
+  border-left-color: #6f42c1;
+}
+
+.doctor-card.has-urgent {
+  border-left-width: 6px;
+}
+
+.doctor-card.no-patients {
+  opacity: 0.7;
+}
+
+.doctor-card.no-patients:hover {
+  transform: none;
+  cursor: default;
+}
+
+.doctor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.doctor-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.doctor-icon {
+  font-size: 1.5rem;
+}
+
+.doctor-header h4 {
+  font-size: 1.1rem;
+  margin: 0;
+  color: var(--text-color);
+}
+
+.doctor-total {
+  font-size: 0.875rem;
+  color: var(--text-color);
+  opacity: 0.7;
+  font-weight: 500;
+}
+
+.no-patients-msg {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  color: var(--text-color);
+  opacity: 0.6;
+  font-size: 0.9rem;
+}
+
+.doctor-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stat-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.2s;
+}
+
+.badge.clickable {
+  cursor: pointer;
+}
+
+.badge.clickable:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px var(--shadow);
+}
+
+.badge-risk {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.badge-scheduled {
+  background-color: #cfe2ff;
+  color: #084298;
+}
+
+.badge-surgery {
+  background-color: #d1e7dd;
+  color: #0f5132;
+}
+
+.badge-no-surgery {
+  background-color: #f8d7da;
+  color: #842029;
+}
+
+.dark-theme .badge-risk {
+  background-color: #665d03;
+  color: #fff3cd;
+}
+
+.dark-theme .badge-scheduled {
+  background-color: #084298;
+  color: #cfe2ff;
+}
+
+.dark-theme .badge-surgery {
+  background-color: #0f5132;
+  color: #d1e7dd;
+}
+
+.dark-theme .badge-no-surgery {
+  background-color: #842029;
+  color: #f8d7da;
+}
+
+.urgent-alert {
+  background-color: #f8d7da;
+  color: #842029;
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.urgent-alert.pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.dark-theme .urgent-alert {
+  background-color: #842029;
+  color: #f8d7da;
+}
+
+.doctor-metrics {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  color: var(--text-color);
+  opacity: 0.7;
+}
+
+.metric-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.metric-value.conversion {
+  color: #28a745;
+  font-size: 1rem;
+}
+
+/* Deprecated - mantido para compatibilidade */
+.conversion-rate {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.conversion-label {
+  color: var(--text-color);
+  opacity: 0.7;
+}
+
+.conversion-value {
+  font-weight: 700;
+  color: #28a745;
+  font-size: 1rem;
+}
+
+/* Storage Indicator */
+.storage-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: var(--card-bg);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px var(--shadow);
+  font-size: 0.875rem;
+  justify-content: center;
+}
+
+.storage-icon {
+  font-size: 1.25rem;
 }
 
 .patients-container {
@@ -193,9 +562,130 @@ header {
   box-shadow: 0 4px 8px var(--shadow);
 }
 
+/* Estilos antigos removidos - usando versões modernizadas abaixo */
+
+.filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filters input,
+.filters select {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.clear-filters-btn {
+  padding: 0.5rem 1rem;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.clear-filters-btn:hover {
+  background-color: #5a6268;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.clear-filters-btn:active {
+  transform: translateY(0);
+}
+
+/* Seção de Pacientes */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.section-header h2 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-counter {
+  font-size: 0.9rem;
+  font-weight: normal;
+  color: var(--text-color);
+  opacity: 0.7;
+}
+
+.view-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sort-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sort-control label {
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.sort-control select {
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.view-btn {
+  background: var(--card-bg);
+  border: none;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  color: var(--text-color);
+  transition: all 0.3s;
+  font-size: 1rem;
+}
+
+.view-btn:hover {
+  background: var(--hover-bg);
+}
+
+.view-btn.active {
+  background: #007bff;
+  color: white;
+}
+
+/* Formulário */
 .form-section {
   background-color: var(--card-bg);
-  padding: 1rem;
+  padding: 1.5rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px var(--shadow);
   margin-bottom: 2rem;
@@ -204,33 +694,73 @@ header {
     box-shadow 0.3s;
 }
 
-.form-section h2 {
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 1rem;
+}
+
+.form-header h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-reset {
+  padding: 0.5rem 1rem;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+}
+
+.btn-reset:hover {
+  background-color: #5a6268;
+  transform: translateY(-1px);
 }
 
 #patientForm {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
 }
 
 #patientForm input,
-#patientForm select,
-#patientForm textarea {
-  padding: 0.5rem;
+#patientForm select {
+  padding: 0.6rem;
   border: 1px solid var(--border-color);
   border-radius: 4px;
   background-color: var(--card-bg);
   color: var(--text-color);
-  transition:
-    border-color 0.3s,
-    background-color 0.3s,
-    color 0.3s;
+  transition: all 0.3s;
+  font-size: 0.95rem;
+}
+
+#patientForm input:focus,
+#patientForm select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
 }
 
 #patientForm textarea {
   grid-column: span 2;
+  padding: 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--card-bg);
+  color: var(--text-color);
   resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
 }
 
 #patientForm button {
@@ -241,26 +771,29 @@ header {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.3s;
 }
 
-.filters {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
+#patientForm button:hover {
+  background-color: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
 }
 
-.filters input,
-.filters select {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
+/* Lista de Pacientes */
 .patients-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 0.5rem;
+  gap: 1rem;
+}
+
+.patients-list.grid-view {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.patients-list.list-view {
+  grid-template-columns: 1fr;
 }
 
 /* Agrupamento por situação/status */
@@ -293,64 +826,291 @@ header {
   grid-column: 1 / -1;
 }
 
+/* Cards de Pacientes - Design Limpo com Bordas por Status/Categoria */
 .patient-card {
-  background-color: white;
-  padding: 0.5rem;
+  background-color: var(--card-bg);
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border-left: 4px solid #6c757d; /* Cor padrão cinza */
+  box-shadow: 0 1px 3px var(--shadow);
+  border-left: 3px solid #6c757d;
+  transition: all 0.2s;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-/* Bordas laterais baseadas na situação */
-.patient-card[data-status="Paciente solicitado risco"] {
-  border-left-color: #007bff; /* Azul */
+.patient-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px var(--shadow);
 }
 
-.patient-card[data-status="Paciente agendou cirurgia"] {
-  border-left-color: #28a745; /* Verde */
+/* Bordas por Status/Categoria do Paciente */
+.patient-card.status-paciente-solicitado-risco {
+  border-left-color: #28a745; /* Verde - Pedido de risco cirúrgico */
 }
 
-.patient-card[data-status="Paciente fez cirurgia"] {
-  border-left-color: #6c757d; /* Cinza */
+.patient-card.status-paciente-agendou-cirurgia {
+  border-left-color: #007bff; /* Azul - Agendou cirurgia */
 }
 
-.patient-card[data-status="Paciente não quer operar"] {
-  border-left-color: #dc3545; /* Vermelho */
+.patient-card.status-paciente-fez-cirurgia {
+  border-left-color: #6c757d; /* Cinza - Pós-cirurgia */
 }
 
-/* Sombras baseadas na situação */
-.patient-card[data-status="Paciente solicitado risco"] {
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+.patient-card.status-paciente-não-quer-operar {
+  border-left-color: #dc3545; /* Vermelho - Não vai operar */
 }
 
-.patient-card[data-status="Paciente agendou cirurgia"] {
-  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+/* Cabeçalho do card */
+.patient-card-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--card-bg);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
 }
 
-.patient-card[data-status="Paciente fez cirurgia"] {
-  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+.patient-header-left {
+  flex: 1;
+  min-width: 0;
 }
 
-.patient-card[data-status="Paciente não quer operar"] {
-  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+.patient-name {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.05rem;
+  color: var(--text-color);
+  font-weight: 600;
+  line-height: 1.4;
+  word-wrap: break-word;
 }
 
-.patient-card h4 {
-  margin-bottom: 0.25rem;
-  font-size: 1rem;
+.patient-status {
+  font-size: 0.8rem;
+  color: var(--text-color);
+  opacity: 0.7;
+  font-weight: 400;
+  display: block;
 }
 
-.patient-card p {
-  margin-bottom: 0.1rem;
+.urgency-badge {
+  flex-shrink: 0;
+  padding: 0.3rem 0.65rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Cores do badge por urgência */
+.urgency-badge.low {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.urgency-badge.medium {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.urgency-badge.high {
+  background-color: #ffe0b2;
+  color: #e65100;
+}
+
+.urgency-badge.critical {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* Dark theme - badges */
+.dark-theme .urgency-badge.low {
+  background-color: #155724;
+  color: #d4edda;
+}
+
+.dark-theme .urgency-badge.medium {
+  background-color: #856404;
+  color: #fff3cd;
+}
+
+.dark-theme .urgency-badge.high {
+  background-color: #e65100;
+  color: #ffe0b2;
+}
+
+.dark-theme .urgency-badge.critical {
+  background-color: #721c24;
+  color: #f8d7da;
+}
+
+/* Corpo do card */
+.patient-card-body {
+  padding: 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.patient-info-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
   font-size: 0.9rem;
+  line-height: 1.5;
 }
 
-.badge {
-  display: inline-block;
-  padding: 0.2rem 0.4rem;
-  background-color: #007bff;
-  color: white;
+.info-label {
+  font-weight: 500;
+  color: var(--text-color);
+  opacity: 0.65;
+  min-width: 90px;
+  flex-shrink: 0;
+}
+
+.patient-info-row span:not(.info-label) {
+  color: var(--text-color);
+  word-wrap: break-word;
+}
+
+/* Ações do card - minimalistas */
+.patient-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: #fafafa;
+  border-top: 1px solid var(--border-color);
+}
+
+.dark-theme .patient-card-actions {
+  background-color: #2a2a2a;
+}
+
+.btn-action {
+  flex: 1;
+  padding: 0.6rem;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-bg);
+  color: var(--text-color);
   border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-action:hover {
+  background-color: #f0f0f0;
+  transform: translateY(-1px);
+}
+
+.dark-theme .btn-action:hover {
+  background-color: #3a3a3a;
+}
+
+.btn-action.btn-delete {
+  color: #dc3545;
+}
+
+.btn-action.btn-delete:hover {
+  background-color: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+.btn-action.btn-contacted {
+  color: #28a745;
+}
+
+.btn-action.btn-contacted:hover {
+  background-color: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+
+.btn-action.btn-thanked {
+  color: #28a745;
+}
+
+.btn-action.btn-thanked:hover {
+  background-color: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+
+/* Vista de lista - adaptada ao design limpo */
+.patients-list.list-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.patients-list.list-view .patient-card {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.patients-list.list-view .patient-card-header {
+  flex: 0 0 22%;
+  min-width: 200px;
+  border-bottom: none;
+  border-right: 1px solid var(--border-color);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.patients-list.list-view .patient-header-left {
+  width: 100%;
+}
+
+.patients-list.list-view .patient-name {
+  white-space: normal;
+}
+
+.patients-list.list-view .urgency-badge {
+  margin-top: 0.5rem;
+  display: inline-block;
+}
+
+.patients-list.list-view .patient-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.patients-list.list-view .patient-info-row {
+  flex: 0 0 auto;
+  min-width: 160px;
+}
+
+.patients-list.list-view .patient-card-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  border-top: none;
+  border-left: 1px solid var(--border-color);
+  padding: 0.75rem 0.5rem;
+  gap: 0.5rem;
+}
+
+.patients-list.list-view .btn-action {
+  width: 44px;
+  min-width: 44px;
+  flex: none;
+}
+
+/* Badge baseado na situação */
   font-size: 0.75rem;
   margin-bottom: 0.25rem;
 }
@@ -471,6 +1231,92 @@ header {
 
 /* Responsividade */
 @media (max-width: 768px) {
+  /* Prevenir overflow horizontal */
+  body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  * {
+    max-width: 100%;
+  }
+
+  /* Menu hamburguer */
+  .menu-toggle {
+    display: block;
+  }
+
+  header {
+    padding: 0.75rem 1rem;
+  }
+
+  header h1 {
+    font-size: 0.9rem;
+    text-align: left;
+  }
+
+  .header-controls {
+    gap: 0.5rem;
+  }
+
+  .header-controls button {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  /* Sidebar mobile */
+  .sidebar {
+    position: fixed;
+    left: -300px;
+    top: 0;
+    height: 100vh;
+    width: 250px;
+    z-index: 999;
+    transition: left 0.3s ease;
+    border-radius: 0;
+    padding-top: 4rem;
+  }
+
+  .sidebar.active {
+    left: 0;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+  }
+
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+  }
+
+  .sidebar-overlay.active {
+    display: block;
+  }
+
+  .container {
+    flex-direction: column;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .main-content {
+    width: 100%;
+    padding: 0.75rem;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  /* Formulário */
+  .form-section {
+    margin-bottom: 1rem;
+    padding: 1rem;
+  }
+
   #patientForm {
     grid-template-columns: 1fr;
   }
@@ -482,14 +1328,336 @@ header {
 
   .filters {
     flex-direction: column;
+    gap: 0.5rem;
   }
 
+  .filters input,
+  .filters select {
+    width: 100%;
+  }
+
+  .clear-filters-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Lista de pacientes */
   .patients-list {
     grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .patients-list.grid-view,
+  .patients-list.list-view {
+    grid-template-columns: 1fr;
+  }
+
+  /* Cards em mobile sempre em modo simplificado */
+  .patients-list.list-view .patient-card {
+    flex-direction: column;
+  }
+
+  .patients-list.list-view .patient-card-header {
+    flex: 1;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .patients-list.list-view .patient-card-body {
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .patients-list.list-view .patient-info-row {
+    min-width: auto;
+  }
+
+  .patients-list.list-view .patient-card-actions {
+    flex-direction: row;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .patients-list.list-view .btn-action {
+    width: auto;
+    flex: 1;
+  }
+
+  /* Controles de visualização mobile */
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .section-header h2 {
+    font-size: 1.15rem;
+  }
+
+  .patient-counter {
+    font-size: 0.85rem;
+  }
+
+  .view-controls {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .sort-control {
+    flex: 1;
+    min-width: 150px;
+  }
+
+  .sort-control select {
+    font-size: 0.85rem;
+    width: 100%;
+  }
+
+  .view-toggle {
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .view-toggle button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .view-btn {
+    padding: 0.5rem;
+  }
+
+  .btn-action {
+    font-size: 0.9rem;
+    padding: 0.55rem;
+    min-width: 42px;
+    flex: 1 1 auto;
+  }
+
+  .btn-action i {
+    font-size: 1rem;
+  }
+
+  /* Cards dos pacientes - ajustes mobile */
+  .patient-card {
+    max-width: 100%;
+    margin-bottom: 0.75rem;
+  }
+
+  .patient-card-header {
+    padding: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .patient-header-left {
+    flex: 1;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .patient-name {
+    font-size: 1rem;
+    word-break: break-word;
+  }
+
+  .patient-status {
+    font-size: 0.75rem;
+  }
+
+  .patient-card-body {
+    padding: 0.85rem;
+    gap: 0.5rem;
+  }
+
+  .patient-info-row {
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .info-label {
+    min-width: 70px;
+    font-size: 0.8rem;
+  }
+
+  .patient-card-actions {
+    padding: 0.6rem 0.85rem;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .urgency-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+  }
+
+  /* Header da seção em mobile */
+  .section-header h2 {
+    font-size: 1.25rem;
+  }
+
+  .patient-counter {
+    font-size: 0.85rem;
+  }
+
+  .view-toggle {
+    gap: 0.25rem;
+  }
+
+  .view-toggle button {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Formulário melhorado em mobile */
+  .form-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .form-header h3 {
+    font-size: 1.1rem;
+  }
+
+  #resetForm {
+    width: 100%;
+  }
+
+  /* Ajustes nos botões de ação */
+  .btn-edit,
+  .btn-danger,
+  .btn-delete {
+    font-size: 0.9rem;
   }
 
   .actions {
     flex-direction: column;
+  }
+
+  /* Grupos de status mobile */
+  .status-group {
+    margin-bottom: 1rem;
+  }
+
+  .status-title {
+    font-size: 0.95rem;
+    padding-left: 0.5rem;
+  }
+
+  .status-group-cards {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  /* Dashboard responsivo */
+  .mini-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .mini-card {
+    padding: 0.6rem;
+  }
+
+  .mini-card-icon {
+    font-size: 1.25rem;
+  }
+
+  .mini-card-value {
+    font-size: 1.2rem;
+  }
+
+  .mini-card-label {
+    font-size: 0.7rem;
+  }
+
+  .doctors-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .doctor-card {
+    padding: 1rem;
+  }
+
+  .section-title {
+    font-size: 1rem;
+  }
+
+  .doctor-header h4 {
+    font-size: 1rem;
+  }
+
+  .doctor-total {
+    font-size: 0.8rem;
+  }
+
+  .stat-badges {
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+  }
+
+  /* Header ajustes */
+  header {
+    padding: 0.75rem 1rem;
+  }
+
+  header h1 {
+    font-size: 0.9rem;
+  }
+
+  /* Cards de pacientes mobile */
+  .patient-card {
+    margin-bottom: 0.75rem;
+  }
+
+  .patient-card-header {
+    padding: 0.75rem;
+    flex-direction: column;
+  }
+
+  .urgency-badge {
+    margin-top: 0.5rem;
+    align-self: flex-start;
+  }
+
+  /* Formulário mobile */
+  .form-section {
+    padding: 1rem;
+  }
+
+  .form-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #resetForm {
+    margin-top: 0.5rem;
+  }
+
+  /* Botões de ação mobile */
+  .patient-card-actions {
+    flex-wrap: wrap;
+  }
+
+  .btn-action {
+    min-width: 44px;
+  }
+}
+
+/* Modal ajustes mobile */
+@media (max-width: 768px) {
+  .modal-content {
+    margin: 8% auto;
+    width: 95%;
+    padding: 1.5rem;
   }
 }
 
@@ -549,76 +1717,7 @@ header {
   font-weight: bold;
 }
 
-/* Responsividade */
-@media (max-width: 768px) {
-  .container {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .sidebar {
-    width: 100%;
-    order: 2;
-  }
-
-  .sidebar ul {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .sidebar li {
-    margin-bottom: 0;
-  }
-
-  .nav-link {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.9rem;
-  }
-
-  .main-content {
-    order: 1;
-  }
-
-  .dashboard {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  }
-
-  .form-section h3 {
-    margin-bottom: 1rem;
-  }
-
-  #patientForm {
-    grid-template-columns: 1fr;
-  }
-
-  #patientForm textarea {
-    grid-column: span 1;
-  }
-
-  #patientForm button {
-    grid-column: span 1;
-  }
-
-  .filters {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .patient-card {
-    padding: 1rem;
-  }
-
-  .actions {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .actions button {
-    width: 100%;
-  }
-}
-
+/* Estilos do formulário de edição */
 #editForm select,
 #editForm textarea {
   padding: 0.5rem;
