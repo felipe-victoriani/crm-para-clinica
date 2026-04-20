@@ -17,6 +17,7 @@ export const statuses = [
   "Paciente solicitado risco",
   "Paciente agendou cirurgia",
   "Paciente fez cirurgia",
+  "Cirurgias Refrativas",
   "Paciente não quer operar",
 ];
 

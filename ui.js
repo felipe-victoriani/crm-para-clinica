@@ -51,6 +51,7 @@ const statusDisplayMap = {
   "Paciente solicitado risco": "Pedido de risco cirúrgico",
   "Paciente agendou cirurgia": "Agendou cirurgia",
   "Paciente fez cirurgia": "Pós-cirurgia",
+  "Cirurgias Refrativas": "Cirurgias Refrativas",
   "Paciente não quer operar": "Não vai operar",
 };
 
