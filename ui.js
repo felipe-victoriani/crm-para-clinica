@@ -66,38 +66,38 @@ export function renderDashboard() {
 
   dashboard.innerHTML = `
     <div class="dashboard-section">
-      <h3 class="section-title">📊 Visão Geral</h3>
+      <h3 class="section-title"><i class="fas fa-chart-bar"></i> Visão Geral</h3>
       <div class="mini-cards-grid">
         <div class="mini-card clickable" data-filter="all">
-          <span class="mini-card-icon">👥</span>
+          <span class="mini-card-icon"><i class="fas fa-users"></i></span>
           <div class="mini-card-content">
             <span class="mini-card-value">${stats.total}</span>
             <span class="mini-card-label">Total</span>
           </div>
         </div>
         <div class="mini-card new-month">
-          <span class="mini-card-icon">✨</span>
+          <span class="mini-card-icon"><i class="fas fa-calendar-plus"></i></span>
           <div class="mini-card-content">
             <span class="mini-card-value">${stats.newThisMonth}</span>
             <span class="mini-card-label">Novos no mês</span>
           </div>
         </div>
         <div class="mini-card clickable" data-filter="over30">
-          <span class="mini-card-icon">⏱️</span>
+          <span class="mini-card-icon"><i class="fas fa-clock"></i></span>
           <div class="mini-card-content">
             <span class="mini-card-value">${stats.over30}</span>
             <span class="mini-card-label">30+ dias</span>
           </div>
         </div>
         <div class="mini-card clickable" data-filter="over45">
-          <span class="mini-card-icon">⚠️</span>
+          <span class="mini-card-icon"><i class="fas fa-triangle-exclamation"></i></span>
           <div class="mini-card-content">
             <span class="mini-card-value">${stats.over45}</span>
             <span class="mini-card-label">45+ dias</span>
           </div>
         </div>
         <div class="mini-card clickable ${stats.over60 > 0 ? "urgent" : ""}" data-filter="over60">
-          <span class="mini-card-icon">🚨</span>
+          <span class="mini-card-icon"><i class="fas fa-bell"></i></span>
           <div class="mini-card-content">
             <span class="mini-card-value">${stats.over60}</span>
             <span class="mini-card-label">60+ dias</span>
@@ -107,7 +107,7 @@ export function renderDashboard() {
     </div>
 
     <div class="dashboard-section">
-      <h3 class="section-title">👨‍⚕️ Médicos</h3>
+      <h3 class="section-title"><i class="fas fa-user-doctor"></i> Médicos</h3>
       <div class="doctors-grid">
         ${doctorStats
           .map((doctor, index) => {
@@ -132,30 +132,33 @@ export function renderDashboard() {
               doctor.total === 0
                 ? `
               <div class="no-patients-msg">
-                <span>📭 Nenhum paciente atribuído</span>
+                <span><i class="fas fa-inbox"></i> Nenhum paciente atribuído</span>
               </div>
             `
                 : `
             <div class="doctor-stats">
               <div class="stat-badges">
                 <span class="badge badge-risk clickable" data-filter="${doctor.name}:Paciente solicitado risco" title="Pedido de risco">
-                  🩺 ${doctor.byStatus[0]}
+                  <i class="fas fa-stethoscope"></i> ${doctor.byStatus[0]}
                 </span>
                 <span class="badge badge-scheduled clickable" data-filter="${doctor.name}:Paciente agendou cirurgia" title="Agendou cirurgia">
-                  📅 ${doctor.byStatus[1]}
+                  <i class="fas fa-calendar-check"></i> ${doctor.byStatus[1]}
                 </span>
                 <span class="badge badge-surgery clickable" data-filter="${doctor.name}:Paciente fez cirurgia" title="Pós-cirurgia">
-                  ✅ ${doctor.byStatus[2]}
+                  <i class="fas fa-circle-check"></i> ${doctor.byStatus[2]}
+                </span>
+                <span class="badge badge-refractive clickable" data-filter="${doctor.name}:Cirurgias Refrativas" title="Cirurgias Refrativas">
+                  <i class="fas fa-eye"></i> ${doctor.byStatus[3]}
                 </span>
                 <span class="badge badge-no-surgery clickable" data-filter="${doctor.name}:Paciente não quer operar" title="Não vai operar">
-                  ❌ ${doctor.byStatus[3]}
+                  <i class="fas fa-ban"></i> ${doctor.byStatus[4]}
                 </span>
               </div>
               ${
                 doctor.over60 > 0
                   ? `
                 <div class="urgent-alert pulse">
-                  🚨 ${doctor.over60} paciente${doctor.over60 > 1 ? "s" : ""} com 60+ dias
+                  <i class="fas fa-triangle-exclamation"></i> ${doctor.over60} paciente${doctor.over60 > 1 ? "s" : ""} com 60+ dias
                 </div>
               `
                   : ""
