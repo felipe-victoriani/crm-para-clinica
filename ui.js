@@ -657,8 +657,9 @@ export function setupEventListeners() {
   const navLinks = document.querySelectorAll(".nav-link");
   navLinks.forEach((link) => {
     link.addEventListener("click", (e) => {
-      e.preventDefault();
       const section = e.target.closest(".nav-link").dataset.section;
+      if (!section) return; // links externos: não interceptar
+      e.preventDefault();
       showSection(section);
     });
   });
