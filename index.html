@@ -23,7 +23,7 @@
       <button id="menuToggle" class="menu-toggle" title="Menu">
         <i class="fas fa-bars"></i>
       </button>
-      <h1>CRM - Controle de Pacientes de Risco Cirúrgico-Oftalmo 15</h1>
+      <h1>CRM Oftalmo 15</h1>
       <div class="header-controls">
         <button id="themeToggle" title="Alternar Tema">
           <i class="fas fa-moon"></i>
@@ -138,55 +138,93 @@
                 </button>
               </div>
               <form id="patientForm">
-                <input
-                  type="text"
-                  name="name"
-                  placeholder="Nome do paciente"
-                  required
-                />
-                <input type="date" name="visitDate" required />
-                <select name="doctor" required>
-                  <option value="">Selecione o médico</option>
-                  <option value="Dr. Dante">Dr. Dante</option>
-                  <option value="Dr. Alberto">Dr. Alberto</option>
-                  <option value="Dra. Fabiana">Dra. Fabiana</option>
-                </select>
-                <select name="responsible" required>
-                  <option value="">Responsável pelo paciente</option>
-                  <option value="Felipe">Felipe</option>
-                  <option value="Gabi">Gabi</option>
-                </select>
-                <input
-                  type="text"
-                  name="surgeryType"
-                  placeholder="Tipo de cirurgia"
-                  required
-                />
-                <textarea name="notes" placeholder="Observações"></textarea>
-                <input
-                  type="tel"
-                  name="phone"
-                  placeholder="Telefone (somente números)"
-                  pattern="[0-9]+"
-                  required
-                />
-                <select name="status" required>
-                  <option value="">Selecione a situação</option>
-                  <option value="Paciente solicitado risco">
-                    Pedido de risco cirúrgico
-                  </option>
-                  <option value="Paciente agendou cirurgia">
-                    Agendou cirurgia
-                  </option>
-                  <option value="Paciente fez cirurgia">Pós-cirurgia</option>
-                  <option value="Cirurgias Refrativas">
-                    Cirurgias Refrativas
-                  </option>
-                  <option value="Paciente não quer operar">
-                    Não vai operar
-                  </option>
-                </select>
-                <button type="submit">Cadastrar</button>
+                <div class="form-field">
+                  <label for="pName">Nome do paciente</label>
+                  <input
+                    id="pName"
+                    type="text"
+                    name="name"
+                    placeholder="Nome completo"
+                    required
+                  />
+                </div>
+                <div class="form-field">
+                  <label for="pVisitDate">Data da visita</label>
+                  <input
+                    id="pVisitDate"
+                    type="date"
+                    name="visitDate"
+                    required
+                  />
+                </div>
+                <div class="form-field">
+                  <label for="pDoctor">Médico</label>
+                  <select id="pDoctor" name="doctor" required>
+                    <option value="">Selecione o médico</option>
+                    <option value="Dr. Dante">Dr. Dante</option>
+                    <option value="Dr. Alberto">Dr. Alberto</option>
+                    <option value="Dra. Fabiana">Dra. Fabiana</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label for="pResponsible">Responsável</label>
+                  <select id="pResponsible" name="responsible" required>
+                    <option value="">Selecione o responsável</option>
+                    <option value="Felipe">Felipe</option>
+                    <option value="Gabi">Gabi</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label for="pSurgeryType">Tipo de cirurgia</label>
+                  <input
+                    id="pSurgeryType"
+                    type="text"
+                    name="surgeryType"
+                    placeholder="Ex: Catarata, LASIK..."
+                    required
+                  />
+                </div>
+                <div class="form-field">
+                  <label for="pPhone">Telefone</label>
+                  <input
+                    id="pPhone"
+                    type="tel"
+                    name="phone"
+                    placeholder="Somente números"
+                    pattern="[0-9]+"
+                    required
+                  />
+                </div>
+                <div class="form-field form-field--full">
+                  <label for="pNotes">Observações</label>
+                  <textarea
+                    id="pNotes"
+                    name="notes"
+                    placeholder="Observações sobre o paciente..."
+                  ></textarea>
+                </div>
+                <div class="form-field form-field--full">
+                  <label for="pStatus">Situação</label>
+                  <select id="pStatus" name="status" required>
+                    <option value="">Selecione a situação</option>
+                    <option value="Paciente solicitado risco">
+                      Pedido de risco cirúrgico
+                    </option>
+                    <option value="Paciente agendou cirurgia">
+                      Agendou cirurgia
+                    </option>
+                    <option value="Paciente fez cirurgia">Pós-cirurgia</option>
+                    <option value="Cirurgias Refrativas">
+                      Cirurgias Refrativas
+                    </option>
+                    <option value="Paciente não quer operar">
+                      Não vai operar
+                    </option>
+                  </select>
+                </div>
+                <button type="submit">
+                  <i class="fas fa-user-plus"></i> Cadastrar
+                </button>
               </form>
             </div>
 
@@ -318,7 +356,7 @@
     <!-- Modal de Edição -->
     <div id="editModal" class="modal">
       <div class="modal-content">
-        <span class="close">&times;</span>
+        <span class="close"><i class="fas fa-xmark"></i></span>
         <h2>Editar Paciente</h2>
         <form id="editForm">
           <label for="editResponsible">Responsável:</label>
@@ -365,7 +403,7 @@
     <!-- Modal de Observações -->
     <div id="notesModal" class="modal">
       <div class="modal-content notes-modal">
-        <span class="close notes-close">&times;</span>
+        <span class="close notes-close"><i class="fas fa-xmark"></i></span>
         <h3 id="notesTitle">Observações</h3>
         <div id="notesContent"></div>
       </div>

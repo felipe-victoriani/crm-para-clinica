@@ -18,6 +18,30 @@ import {
 } from "./patients.js";
 import { isFirebaseConfigured } from "./database.js";
 
+// ============================================================
+// Toast de feedback
+// ============================================================
+export function showToast(message, type = "success") {
+  const existing = document.querySelector(".toast");
+  if (existing) existing.remove();
+
+  const icons = {
+    success: "fa-circle-check",
+    error: "fa-circle-xmark",
+    info: "fa-circle-info",
+  };
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i> ${message}`;
+  document.body.appendChild(toast);
+
+  requestAnimationFrame(() => toast.classList.add("toast-visible"));
+  setTimeout(() => {
+    toast.classList.remove("toast-visible");
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
 // Elementos DOM
 const patientForm = document.getElementById("patientForm");
 const patientsList = document.getElementById("patientsList");
@@ -116,14 +140,12 @@ export function renderDashboard() {
               "doctor-alberto",
               "doctor-fabiana",
             ][index];
-            const doctorIcons = ["👨‍⚕️", "🧑‍⚕️", "👩‍⚕️"];
-            const doctorIcon = doctorIcons[index] || "👨‍⚕️";
 
             return `
           <div class="doctor-card ${doctorClass} ${doctor.over60 > 0 ? "has-urgent" : ""} ${doctor.total === 0 ? "no-patients" : ""}" data-doctor="${doctor.name}">
             <div class="doctor-header">
               <div class="doctor-title">
-                <span class="doctor-icon">${doctorIcon}</span>
+                <span class="doctor-icon"><i class="fas fa-user-doctor"></i></span>
                 <h4>${doctor.name}</h4>
               </div>
               <span class="doctor-total">${doctor.total} paciente${doctor.total !== 1 ? "s" : ""}</span>
@@ -322,6 +344,11 @@ function buildPatientCard(patient) {
           ? "medium"
           : "low";
 
+  const isSurgeryDone = patient.status === "Paciente fez cirurgia";
+  const badge = isSurgeryDone
+    ? `<span class="urgency-badge badge-operated"><i class="fas fa-circle-check"></i> Operado(a)</span>`
+    : `<span class="urgency-badge ${daysClass}">${baseDays} dias</span>`;
+
   return `
     <div class="patient-card status-${categoryClass}" data-status="${patient.status}" data-id="${patient.id}">
       <div class="patient-card-header">
@@ -329,7 +356,7 @@ function buildPatientCard(patient) {
           <h3 class="patient-name">${patient.name}</h3>
           <span class="patient-status">${displayStatusLabel(patient.status)}</span>
         </div>
-        <span class="urgency-badge ${daysClass}">${baseDays} dias</span>
+        ${badge}
       </div>
       
       <div class="patient-card-body">
@@ -456,7 +483,15 @@ export function renderPatients() {
     })
     .join("");
 
-  patientsList.innerHTML = groupsHtml || "<p>Nenhum paciente encontrado.</p>";
+  patientsList.innerHTML =
+    groupsHtml ||
+    `
+    <div class="empty-state">
+      <i class="fas fa-user-group"></i>
+      <p>Nenhum paciente encontrado</p>
+      <span>Tente ajustar os filtros ou cadastre um novo paciente.</span>
+    </div>
+  `;
 }
 
 // Funções globais para os botões
@@ -528,7 +563,7 @@ window.sendThankYou = async function (phone, name, doctor, id) {
   }
 
   const message = [
-    `Olá, ${name} 😊`,
+    `Olá, ${name},`,
     "",
     "A equipe da Oftalmo 15 agradece a confiança em nosso trabalho.",
     "Sua cirurgia foi concluída com sucesso, e ficamos muito felizes em fazer parte desse momento tão importante.",
@@ -592,6 +627,7 @@ window.deletePatient = async function (id) {
     await removePatient(id);
     renderDashboard();
     renderPatients();
+    showToast("Paciente excluído.", "info");
   }
 };
 
@@ -676,12 +712,13 @@ export function setupEventListeners() {
       surgeryType: formData.get("surgeryType"),
       notes: formData.get("notes"),
       phone: formData.get("phone"),
-      status: "Paciente solicitado risco", // Status inicial
+      status: formData.get("status"),
     };
     await addPatient(patient);
     patientForm.reset();
     renderDashboard();
     renderPatients();
+    showToast("Paciente cadastrado com sucesso!");
   });
 
   // Filtros
@@ -935,13 +972,25 @@ export function setupEventListeners() {
     }
   };
 
+  // Auto-limpar formatação do campo de telefone no modal de edição
+  if (editPhone) {
+    editPhone.addEventListener("input", () => {
+      const cursor = editPhone.selectionStart;
+      const clean = editPhone.value.replace(/\D/g, "");
+      if (editPhone.value !== clean) {
+        editPhone.value = clean;
+        editPhone.setSelectionRange(cursor, cursor);
+      }
+    });
+  }
+
   editForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (currentEditId) {
       const updatedData = {
         responsible: editResponsible ? editResponsible.value : undefined,
         doctor: editDoctor ? editDoctor.value : undefined,
-        phone: editPhone ? editPhone.value : undefined,
+        phone: editPhone ? editPhone.value.replace(/\D/g, "") : undefined,
         status: editStatus.value,
         notes: editNotes.value,
       };
@@ -949,6 +998,7 @@ export function setupEventListeners() {
       editModal.style.display = "none";
       renderDashboard();
       renderPatients();
+      showToast("Dados do paciente atualizados!");
     }
   });
 }
