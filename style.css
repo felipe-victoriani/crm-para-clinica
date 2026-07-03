@@ -1122,6 +1122,16 @@ header h1 {
   gap: 0.35rem;
 }
 
+/* Card com urgência crítica (3 dias ou menos) - background vermelho suave */
+.patient-card:has(.urgency-badge.critical) {
+  background-color: rgba(239, 68, 68, 0.08);
+  border-left-color: var(--red);
+}
+
+.patient-card:has(.urgency-badge.critical):hover {
+  background-color: rgba(239, 68, 68, 0.12);
+}
+
 /* Corpo do card */
 .patient-card-body {
   padding: 1rem;

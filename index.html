@@ -222,6 +222,28 @@
                     </option>
                   </select>
                 </div>
+                <div class="form-field form-field--full">
+                  <label for="pScheduledActivation"
+                    >Data de ativação programada (opcional)</label
+                  >
+                  <input
+                    id="pScheduledActivation"
+                    type="date"
+                    name="scheduledActivation"
+                    placeholder="Deixe vazio para usar padrão de 20 dias"
+                  />
+                  <small
+                    style="
+                      color: #888;
+                      font-size: 0.85rem;
+                      margin-top: 0.25rem;
+                      display: block;
+                    "
+                  >
+                    💡 Deixe em branco para calcular 20 dias a partir da
+                    <strong>Data da visita</strong>
+                  </small>
+                </div>
                 <button type="submit">
                   <i class="fas fa-user-plus"></i> Cadastrar
                 </button>
@@ -390,6 +412,24 @@
             <option value="Cirurgias Refrativas">Cirurgias Refrativas</option>
             <option value="Paciente não quer operar">Não vai operar</option>
           </select>
+          <label for="editScheduledActivation"
+            >Data de ativação programada:</label
+          >
+          <input
+            id="editScheduledActivation"
+            type="date"
+            placeholder="Data de ativação"
+          />
+          <small
+            style="
+              color: #888;
+              font-size: 0.85rem;
+              margin-top: 0.25rem;
+              display: block;
+            "
+          >
+            💡 Ajuste a data para alterar a contagem regressiva
+          </small>
           <label for="editNotes">Observações (editar ou adicionar):</label>
           <textarea
             id="editNotes"

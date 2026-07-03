@@ -97,6 +97,29 @@ export async function fixPatientsCreatedAt() {
   }
 }
 
+// Atualizar todos pacientes com "Pedido de risco" para data de hoje
+export async function updateRiskPatientDates() {
+  const riskPatients = patients.filter(
+    (p) => p.status === "Paciente solicitado risco",
+  );
+
+  if (riskPatients.length > 0) {
+    console.log(
+      `Atualizando ${riskPatients.length} pacientes com pedido de risco...`,
+    );
+
+    for (const patient of riskPatients) {
+      const now = Date.now();
+      await updatePatient(patient.id, {
+        createdAt: now,
+        scheduledActivationDate: now + 20 * 24 * 60 * 60 * 1000, // 20 dias a partir de hoje
+      });
+    }
+
+    console.log("Atualização de pacientes de risco concluída!");
+  }
+}
+
 // Obter pacientes
 export function getPatients() {
   return patients;
@@ -104,19 +127,59 @@ export function getPatients() {
 
 // Adicionar paciente
 export async function addPatient(patientData) {
+  const now = Date.now();
+
+  // Se não foi definida data de ativação, usar padrão de 20 dias
+  let scheduledActivationDate = patientData.scheduledActivationDate;
+  if (!scheduledActivationDate || isNaN(scheduledActivationDate)) {
+    // Se há visitDate, usar ela como base; senão, usar createdAt
+    let baseDate = now;
+    if (patientData.visitDate) {
+      // Converter visitDate (string YYYY-MM-DD) para timestamp
+      const visitTimestamp = new Date(
+        patientData.visitDate + "T00:00:00",
+      ).getTime();
+      if (!isNaN(visitTimestamp)) {
+        baseDate = visitTimestamp;
+      }
+    }
+    // Padrão: 20 dias após a data base (visitDate ou createdAt)
+    scheduledActivationDate = baseDate + 20 * 24 * 60 * 60 * 1000;
+  }
+
+  console.log("addPatient - Dados recebidos:", patientData);
+  console.log(
+    "addPatient - Data de ativação final:",
+    new Date(scheduledActivationDate).toLocaleString("pt-BR"),
+  );
+
   const patient = {
     ...patientData,
-    createdAt: Date.now(),
+    createdAt: now,
     lastContactAt: null,
+    scheduledActivationDate: scheduledActivationDate,
   };
 
-  if (isFirebaseConfigured) {
-    // Firebase: push direto, o listener onValue atualizará automaticamente
-    await dbPush(patient);
-  } else {
-    // localStorage: push e recarregar
-    dbPush(patient);
-    await loadPatients();
+  // Remover scheduledActivationDate se veio como null do patientData (evitar duplicação)
+  delete patient.scheduledActivationDate;
+  patient.scheduledActivationDate = scheduledActivationDate;
+
+  console.log("addPatient - Paciente final a ser salvo:", patient);
+
+  try {
+    if (isFirebaseConfigured) {
+      // Firebase: push direto, o listener onValue atualizará automaticamente
+      await dbPush(patient);
+      console.log("addPatient - Paciente salvo no Firebase");
+    } else {
+      // localStorage: push e recarregar
+      dbPush(patient);
+      await loadPatients();
+      console.log("addPatient - Paciente salvo no localStorage");
+    }
+  } catch (error) {
+    console.error("addPatient - Erro ao salvar:", error);
+    throw error;
   }
 }
 
@@ -182,13 +245,29 @@ export function daysSince(timestamp) {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-// Classificar urgência
-export function getUrgency(days) {
-  if (days === null || days === 0) return "normal";
-  if (days <= 29) return "normal";
-  if (days <= 44) return "amarelo";
-  if (days <= 59) return "laranja";
-  return "vermelho";
+// Calcular dias restantes até a ativação programada
+export function daysRemaining(patient) {
+  if (!patient.scheduledActivationDate) {
+    // Se não tem data de ativação, calcular padrão de 20 dias desde createdAt
+    const scheduledDate =
+      (patient.createdAt || Date.now()) + 20 * 24 * 60 * 60 * 1000;
+    const diff = scheduledDate - Date.now();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    return Math.max(0, days); // Não retornar negativo
+  }
+
+  const diff = patient.scheduledActivationDate - Date.now();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  return Math.max(0, days); // Não retornar negativo
+}
+
+// Classificar urgência baseado em dias RESTANTES
+export function getUrgency(daysLeft) {
+  if (daysLeft === null || daysLeft === undefined) return "normal";
+  if (daysLeft <= 3) return "vermelho"; // 3 dias ou menos = VERMELHO
+  if (daysLeft <= 7) return "amarelo";
+  if (daysLeft <= 14) return "laranja";
+  return "normal";
 }
 
 // Filtrar pacientes
@@ -223,7 +302,7 @@ export function filterPatients(
     filtered = filtered.filter((p) => (p.responsible || "") === responsible);
   }
 
-  // Filtro de dias
+  // Filtro de dias (mantido para compatibilidade com filtros existentes)
   if (minDays !== null) {
     filtered = filtered.filter((p) => {
       const d = daysSince(p.lastContactAt || p.visitDate || p.createdAt);
@@ -231,12 +310,12 @@ export function filterPatients(
     });
   }
 
-  // Ordenar por urgência (vermelho primeiro)
+  // Ordenar por urgência (vermelho primeiro) - usando dias RESTANTES
   filtered.sort((a, b) => {
-    const aDays = daysSince(a.lastContactAt || a.visitDate || a.createdAt);
-    const bDays = daysSince(b.lastContactAt || b.visitDate || b.createdAt);
-    const aUrg = getUrgency(aDays);
-    const bUrg = getUrgency(bDays);
+    const aDaysLeft = daysRemaining(a);
+    const bDaysLeft = daysRemaining(b);
+    const aUrg = getUrgency(aDaysLeft);
+    const bUrg = getUrgency(bDaysLeft);
     const urgOrder = { vermelho: 4, laranja: 3, amarelo: 2, normal: 1 };
     return urgOrder[bUrg] - urgOrder[aUrg];
   });

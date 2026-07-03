@@ -12,6 +12,7 @@ import {
   removePatient,
   addPatient,
   daysSince,
+  daysRemaining,
   getUrgency,
   statuses,
   doctors,
@@ -61,6 +62,9 @@ const editDoctor = document.getElementById("editDoctor");
 const editPhone = document.getElementById("editPhone");
 const editStatus = document.getElementById("editStatus");
 const editNotes = document.getElementById("editNotes");
+const editScheduledActivation = document.getElementById(
+  "editScheduledActivation",
+);
 const closeModal = document.querySelector(".close");
 let currentEditId = null;
 
@@ -321,12 +325,12 @@ function formatPhone(phone) {
 function buildPatientCard(patient) {
   const baseTs =
     patient.lastContactAt || patient.visitDate || patient.createdAt;
-  const baseDays = daysSince(baseTs);
+  const daysLeft = daysRemaining(patient);
   const infoLine = patient.lastContactAt
     ? `<p>Último contato: ${new Date(patient.lastContactAt).toLocaleDateString("pt-BR")}</p>`
     : patient.visitDate
-      ? `<p>Dias desde solicitação: ${baseDays}</p>`
-      : `<span class="days-info"><i class="fas fa-clock"></i> ${baseDays} dias desde cadastro</span>`;
+      ? `<p>Dias restantes para ativação: ${daysLeft}</p>`
+      : `<span class="days-info"><i class="fas fa-clock"></i> ${daysLeft} dias restantes</span>`;
 
   const phoneDisplay = patient.phone ? formatPhone(patient.phone) : "";
   const statusClass = patient.status.replace(/\s+/g, "-").toLowerCase();
@@ -334,20 +338,21 @@ function buildPatientCard(patient) {
   // Classe baseada no status (não no tempo)
   const categoryClass = statusClass;
 
-  // Determinar cor do badge de dias
+  // Determinar cor do badge de dias RESTANTES
+  const urgencyLevel = getUrgency(daysLeft);
   const daysClass =
-    baseDays >= 60
+    urgencyLevel === "vermelho"
       ? "critical"
-      : baseDays >= 45
-        ? "high"
-        : baseDays >= 30
-          ? "medium"
+      : urgencyLevel === "amarelo"
+        ? "medium"
+        : urgencyLevel === "laranja"
+          ? "high"
           : "low";
 
   const isSurgeryDone = patient.status === "Paciente fez cirurgia";
   const badge = isSurgeryDone
     ? `<span class="urgency-badge badge-operated"><i class="fas fa-circle-check"></i> Operado(a)</span>`
-    : `<span class="urgency-badge ${daysClass}">${baseDays} dias</span>`;
+    : `<span class="urgency-badge ${daysClass}">${daysLeft} dias restantes</span>`;
 
   return `
     <div class="patient-card status-${categoryClass}" data-status="${patient.status}" data-id="${patient.id}">
@@ -391,7 +396,7 @@ function buildPatientCard(patient) {
       </div>
       
       <div class="patient-card-actions">
-        <button class="btn-action" onclick="openWhatsApp('${patient.phone}', '${patient.name}', '${patient.doctor}', '${patient.surgeryType}', ${baseDays}, '${patient.id}')" title="WhatsApp">
+        <button class="btn-action" onclick="openWhatsApp('${patient.phone}', '${patient.name}', '${patient.doctor}', '${patient.surgeryType}', ${daysLeft}, '${patient.id}')" title="WhatsApp">
           <i class="fab fa-whatsapp"></i>
         </button>
         <button class="btn-action ${patient.thankYouSentAt ? "btn-thanked" : ""}" onclick="sendThankYou('${patient.phone}', '${patient.name}', '${patient.doctor}', '${patient.id}')" title="${patient.thankYouSentAt ? "Agradecimento enviado" : "Enviar agradecimento"}">
@@ -612,6 +617,21 @@ window.editPatient = function (id) {
     if (editPhone) editPhone.value = (patient.phone || "").replace(/\D/g, "");
     editStatus.value = patient.status;
     editNotes.value = patient.notes || "";
+
+    // Preencher data de ativação programada
+    if (editScheduledActivation && patient.scheduledActivationDate) {
+      const date = new Date(patient.scheduledActivationDate);
+      const dateString = date.toISOString().split("T")[0];
+      editScheduledActivation.value = dateString;
+    } else if (editScheduledActivation) {
+      // Se não tem, calcular padrão (20 dias após createdAt)
+      const defaultDate = new Date(
+        (patient.createdAt || Date.now()) + 20 * 24 * 60 * 60 * 1000,
+      );
+      const dateString = defaultDate.toISOString().split("T")[0];
+      editScheduledActivation.value = dateString;
+    }
+
     editModal.style.display = "flex"; // Usar flex para centralizar
   }
 };
@@ -704,6 +724,21 @@ export function setupEventListeners() {
   patientForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const formData = new FormData(patientForm);
+
+    // Processar data de ativação programada (se fornecida)
+    let scheduledActivationDate = null;
+    const scheduledActivationInput = formData.get("scheduledActivation");
+    if (scheduledActivationInput) {
+      // Converter data do input para timestamp (meia-noite UTC)
+      scheduledActivationDate = new Date(
+        scheduledActivationInput + "T00:00:00",
+      ).getTime();
+      console.log(
+        "Data de ativação definida:",
+        new Date(scheduledActivationDate).toLocaleString("pt-BR"),
+      );
+    }
+
     const patient = {
       name: formData.get("name"),
       visitDate: formData.get("visitDate"),
@@ -713,12 +748,21 @@ export function setupEventListeners() {
       notes: formData.get("notes"),
       phone: formData.get("phone"),
       status: formData.get("status"),
+      scheduledActivationDate: scheduledActivationDate,
     };
-    await addPatient(patient);
-    patientForm.reset();
-    renderDashboard();
-    renderPatients();
-    showToast("Paciente cadastrado com sucesso!");
+
+    console.log("Cadastrando paciente:", patient);
+
+    try {
+      await addPatient(patient);
+      patientForm.reset();
+      renderDashboard();
+      renderPatients();
+      showToast("Paciente cadastrado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao cadastrar paciente:", error);
+      showToast("Erro ao cadastrar paciente: " + error.message, "error");
+    }
   });
 
   // Filtros
@@ -987,12 +1031,21 @@ export function setupEventListeners() {
   editForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (currentEditId) {
+      // Processar data de ativação programada
+      let scheduledActivationDate = null;
+      if (editScheduledActivation && editScheduledActivation.value) {
+        scheduledActivationDate = new Date(
+          editScheduledActivation.value,
+        ).getTime();
+      }
+
       const updatedData = {
         responsible: editResponsible ? editResponsible.value : undefined,
         doctor: editDoctor ? editDoctor.value : undefined,
         phone: editPhone ? editPhone.value.replace(/\D/g, "") : undefined,
         status: editStatus.value,
         notes: editNotes.value,
+        scheduledActivationDate: scheduledActivationDate,
       };
       await updatePatient(currentEditId, updatedData);
       editModal.style.display = "none";

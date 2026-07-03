@@ -1,6 +1,11 @@
 // main.js - Ponto de entrada da aplicação
 import { logout, onAuthStateChange } from "./auth.js";
-import { loadPatients, cleanup, fixPatientsCreatedAt } from "./patients.js";
+import {
+  loadPatients,
+  cleanup,
+  fixPatientsCreatedAt,
+  updateRiskPatientDates,
+} from "./patients.js";
 import { renderDashboard, renderPatients, setupEventListeners } from "./ui.js";
 
 // Inicializar autenticação
@@ -35,6 +40,7 @@ onAuthStateChange((user) => {
 async function initApp() {
   await loadPatients();
   await fixPatientsCreatedAt(); // Corrigir pacientes sem createdAt
+  await updateRiskPatientDates(); // Atualizar pacientes de risco para hoje
   renderDashboard();
   renderPatients();
   setupEventListeners();
