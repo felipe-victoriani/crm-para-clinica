@@ -97,28 +97,7 @@ export async function fixPatientsCreatedAt() {
   }
 }
 
-// Atualizar todos pacientes com "Pedido de risco" para data de hoje
-export async function updateRiskPatientDates() {
-  const riskPatients = patients.filter(
-    (p) => p.status === "Paciente solicitado risco",
-  );
-
-  if (riskPatients.length > 0) {
-    console.log(
-      `Atualizando ${riskPatients.length} pacientes com pedido de risco...`,
-    );
-
-    for (const patient of riskPatients) {
-      const now = Date.now();
-      await updatePatient(patient.id, {
-        createdAt: now,
-        scheduledActivationDate: now + 20 * 24 * 60 * 60 * 1000, // 20 dias a partir de hoje
-      });
-    }
-
-    console.log("Atualização de pacientes de risco concluída!");
-  }
-}
+// Função removida - causava lentidão ao atualizar todos os pacientes no carregamento
 
 // Obter pacientes
 export function getPatients() {
@@ -170,12 +149,10 @@ export async function addPatient(patientData) {
     if (isFirebaseConfigured) {
       // Firebase: push direto, o listener onValue atualizará automaticamente
       await dbPush(patient);
-      console.log("addPatient - Paciente salvo no Firebase");
     } else {
       // localStorage: push e recarregar
       dbPush(patient);
       await loadPatients();
-      console.log("addPatient - Paciente salvo no localStorage");
     }
   } catch (error) {
     console.error("addPatient - Erro ao salvar:", error);

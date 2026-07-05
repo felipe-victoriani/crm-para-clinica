@@ -1,11 +1,6 @@
 // main.js - Ponto de entrada da aplicação
 import { logout, onAuthStateChange } from "./auth.js";
-import {
-  loadPatients,
-  cleanup,
-  fixPatientsCreatedAt,
-  updateRiskPatientDates,
-} from "./patients.js";
+import { loadPatients, cleanup, fixPatientsCreatedAt } from "./patients.js";
 import { renderDashboard, renderPatients, setupEventListeners } from "./ui.js";
 
 // Inicializar autenticação
@@ -38,17 +33,31 @@ onAuthStateChange((user) => {
 
 // Inicializar aplicação
 async function initApp() {
-  await loadPatients();
-  await fixPatientsCreatedAt(); // Corrigir pacientes sem createdAt
-  await updateRiskPatientDates(); // Atualizar pacientes de risco para hoje
-  renderDashboard();
-  renderPatients();
-  setupEventListeners();
+  const loadingOverlay = document.getElementById("loadingOverlay");
 
-  // Mostrar seção inicial (dashboard)
-  const dashboardLink = document.querySelector('[data-section="dashboard"]');
-  if (dashboardLink) {
-    dashboardLink.click();
+  try {
+    await loadPatients();
+    await fixPatientsCreatedAt(); // Corrigir pacientes sem createdAt
+    renderDashboard();
+    renderPatients();
+    setupEventListeners();
+
+    // Mostrar seção inicial (dashboard)
+    const dashboardLink = document.querySelector('[data-section="dashboard"]');
+    if (dashboardLink) {
+      dashboardLink.click();
+    }
+  } catch (error) {
+    console.error("Erro ao inicializar aplicação:", error);
+    alert("Erro ao carregar aplicação. Por favor, recarregue a página.");
+  } finally {
+    // Esconder indicador de carregamento
+    if (loadingOverlay) {
+      loadingOverlay.classList.add("hidden");
+      setTimeout(() => {
+        loadingOverlay.style.display = "none";
+      }, 300);
+    }
   }
 }
 

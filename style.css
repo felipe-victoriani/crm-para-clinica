@@ -2,6 +2,41 @@
    CRM Clínico — Oftalmo 15  |  Design System
    ============================================================ */
 
+/* Indicador de carregamento */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.3s ease;
+}
+
+.loading-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-spinner {
+  text-align: center;
+  color: white;
+}
+
+.loading-spinner i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.loading-spinner p {
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
 :root {
   /* Brand */
   --brand: #0369a1;

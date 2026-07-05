@@ -733,10 +733,6 @@ export function setupEventListeners() {
       scheduledActivationDate = new Date(
         scheduledActivationInput + "T00:00:00",
       ).getTime();
-      console.log(
-        "Data de ativação definida:",
-        new Date(scheduledActivationDate).toLocaleString("pt-BR"),
-      );
     }
 
     const patient = {
@@ -751,8 +747,6 @@ export function setupEventListeners() {
       scheduledActivationDate: scheduledActivationDate,
     };
 
-    console.log("Cadastrando paciente:", patient);
-
     try {
       await addPatient(patient);
       patientForm.reset();
@@ -765,8 +759,22 @@ export function setupEventListeners() {
     }
   });
 
-  // Filtros
-  searchInput.addEventListener("input", renderPatients);
+  // Função debounce para otimizar busca
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  // Filtros com debounce na busca
+  const debouncedRenderPatients = debounce(renderPatients, 300);
+  searchInput.addEventListener("input", debouncedRenderPatients);
   statusFilter.addEventListener("change", renderPatients);
   daysFilter.addEventListener("change", renderPatients);
   if (doctorFilter) doctorFilter.addEventListener("change", renderPatients);
