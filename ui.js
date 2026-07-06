@@ -405,7 +405,7 @@ function buildPatientCard(patient) {
         <button class="btn-action ${patient.lastContactAt ? "btn-contacted" : ""}" onclick="toggleContact('${patient.id}')" title="${patient.lastContactAt ? "Contato realizado" : "Registrar contato"}">
           <i class="fas ${patient.lastContactAt ? "fa-check-circle" : "fa-phone-alt"}"></i>
         </button>
-        ${patient.notes ? `<button class="btn-action" onclick="viewNotes('${patient.name}', '${(patient.notes || "").replace(/'/g, "\\'")}')"><i class="fas fa-sticky-note"></i></button>` : ""}
+        ${patient.notes ? `<button class="btn-action btn-view-notes" data-patient-id="${patient.id}" title="Ver observações"><i class="fas fa-sticky-note"></i></button>` : ""}
         <button class="btn-action" onclick="editPatient('${patient.id}')" title="Editar">
           <i class="fas fa-edit"></i>
         </button>
@@ -469,34 +469,45 @@ export function renderPatients() {
   // Se um status específico estiver selecionado, manter lista simples
   if (status) {
     patientsList.innerHTML = filtered.map(buildPatientCard).join("");
-    return;
-  }
-
-  // Agrupar por situação quando nenhum status está selecionado
-  const baseFiltered = filterPatients(search, "", days, doctor, responsible);
-  const groupsHtml = statuses
-    .map((st) => {
-      const group = baseFiltered.filter((p) => p.status === st);
-      if (group.length === 0) return "";
-      const cards = group.map(buildPatientCard).join("");
-      return `
+  } else {
+    // Agrupar por situação quando nenhum status está selecionado
+    const baseFiltered = filterPatients(search, "", days, doctor, responsible);
+    const groupsHtml = statuses
+      .map((st) => {
+        const group = baseFiltered.filter((p) => p.status === st);
+        if (group.length === 0) return "";
+        const cards = group.map(buildPatientCard).join("");
+        return `
         <section class="status-group" data-status-group="${st.replace(/\s+/g, "-").toLowerCase()}">
           <h3 class="status-title">${displayStatusLabel(st)} <span class="status-count">(${group.length})</span></h3>
           <div class="status-group-cards">${cards}</div>
         </section>
       `;
-    })
-    .join("");
+      })
+      .join("");
 
-  patientsList.innerHTML =
-    groupsHtml ||
-    `
+    patientsList.innerHTML =
+      groupsHtml ||
+      `
     <div class="empty-state">
       <i class="fas fa-user-group"></i>
       <p>Nenhum paciente encontrado</p>
       <span>Tente ajustar os filtros ou cadastre um novo paciente.</span>
     </div>
   `;
+  }
+
+  // Adicionar event listeners para botões de visualizar observações (para ambos os casos)
+  const viewNotesButtons = patientsList.querySelectorAll(".btn-view-notes");
+  viewNotesButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const patientId = button.getAttribute("data-patient-id");
+      const patient = getPatients().find((p) => p.id === patientId);
+      if (patient) {
+        window.viewNotes(patient.name, patient.notes || "");
+      }
+    });
+  });
 }
 
 // Funções globais para os botões
