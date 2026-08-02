@@ -754,6 +754,10 @@ export function setupEventListeners() {
     const surgeryDateInput = formData.get("surgeryDate");
     const surgeryDate = surgeryDateInput ? surgeryDateInput : null;
 
+    // Capturar segunda data da cirurgia (se fornecida)
+    const surgeryDate2Input = formData.get("surgeryDate2");
+    const surgeryDate2 = surgeryDate2Input ? surgeryDate2Input : null;
+
     const patient = {
       name: formData.get("name"),
       visitDate: formData.get("visitDate"),
@@ -765,6 +769,7 @@ export function setupEventListeners() {
       status: formData.get("status"),
       scheduledActivationDate: scheduledActivationDate,
       surgeryDate: surgeryDate,
+      surgeryDate2: surgeryDate2,
     };
 
     try {
@@ -1067,6 +1072,13 @@ export function setupEventListeners() {
       const surgeryDate =
         editSurgeryDate && editSurgeryDate.value ? editSurgeryDate.value : null;
 
+      // Capturar segunda data da cirurgia (se fornecida)
+      const editSurgeryDate2 = document.getElementById("editSurgeryDate2");
+      const surgeryDate2 =
+        editSurgeryDate2 && editSurgeryDate2.value
+          ? editSurgeryDate2.value
+          : null;
+
       const updatedData = {
         responsible: editResponsible ? editResponsible.value : undefined,
         doctor: editDoctor ? editDoctor.value : undefined,
@@ -1075,6 +1087,7 @@ export function setupEventListeners() {
         notes: editNotes.value,
         scheduledActivationDate: scheduledActivationDate,
         surgeryDate: surgeryDate,
+        surgeryDate2: surgeryDate2,
       };
       await updatePatient(currentEditId, updatedData);
       editModal.style.display = "none";

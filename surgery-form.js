@@ -6,7 +6,9 @@
 export function initSurgeryDateField() {
   const statusSelect = document.getElementById("pStatus");
   const surgeryDateField = document.getElementById("surgeryDateField");
+  const surgeryDate2Field = document.getElementById("surgeryDate2Field");
   const surgeryDateInput = document.getElementById("pSurgeryDate");
+  const surgeryDate2Input = document.getElementById("pSurgeryDate2");
 
   if (!statusSelect || !surgeryDateField) return;
 
@@ -16,15 +18,20 @@ export function initSurgeryDateField() {
 
     if (selectedStatus === "Paciente agendou cirurgia") {
       surgeryDateField.style.display = "block";
+      surgeryDate2Field.style.display = "block";
       // Opcional: tornar campo obrigatório quando visível
       if (surgeryDateInput) {
         surgeryDateInput.setAttribute("required", "required");
       }
     } else {
       surgeryDateField.style.display = "none";
+      surgeryDate2Field.style.display = "none";
       if (surgeryDateInput) {
         surgeryDateInput.removeAttribute("required");
         surgeryDateInput.value = ""; // Limpar valor ao esconder
+      }
+      if (surgeryDate2Input) {
+        surgeryDate2Input.value = ""; // Limpar valor ao esconder
       }
     }
   }
@@ -59,13 +66,13 @@ export function addSurgeryDateToEditModal() {
   const editStatus = document.getElementById("editStatus");
   if (!editStatus) return;
 
-  // Criar o campo de data da cirurgia
+  // Criar o campo de data da cirurgia 1
   const surgeryDateGroup = document.createElement("div");
   surgeryDateGroup.className = "form-field form-field--full";
   surgeryDateGroup.id = "editSurgeryDateField";
   surgeryDateGroup.style.display = "none";
   surgeryDateGroup.innerHTML = `
-    <label for="editSurgeryDate">Data da Cirurgia</label>
+    <label for="editSurgeryDate">Data da Primeira Cirurgia</label>
     <input
       id="editSurgeryDate"
       type="date"
@@ -73,7 +80,25 @@ export function addSurgeryDateToEditModal() {
       placeholder="Data agendada para a cirurgia"
     />
     <small style="color: #888; font-size: 0.85rem; margin-top: 0.25rem; display: block;">
-      💡 Esta data será usada para calcular os lembretes automáticos
+      💡 Normalmente a cirurgia de um olho (esta data calcula os lembretes)
+    </small>
+  `;
+
+  // Criar o campo de data da cirurgia 2
+  const surgeryDate2Group = document.createElement("div");
+  surgeryDate2Group.className = "form-field form-field--full";
+  surgeryDate2Group.id = "editSurgeryDate2Field";
+  surgeryDate2Group.style.display = "none";
+  surgeryDate2Group.innerHTML = `
+    <label for="editSurgeryDate2">Data da Segunda Cirurgia (Opcional)</label>
+    <input
+      id="editSurgeryDate2"
+      type="date"
+      name="surgeryDate2"
+      placeholder="Segunda data da cirurgia"
+    />
+    <small style="color: #888; font-size: 0.85rem; margin-top: 0.25rem; display: block;">
+      💡 Normalmente a cirurgia do outro olho
     </small>
   `;
 
@@ -82,18 +107,29 @@ export function addSurgeryDateToEditModal() {
     surgeryDateGroup,
     editStatus.parentElement.nextSibling,
   );
+  editStatus.parentElement.parentElement.insertBefore(
+    surgeryDate2Group,
+    surgeryDateGroup.nextSibling,
+  );
 
   // Adicionar lógica para mostrar/esconder no modal de edição
   editStatus.addEventListener("change", function () {
     const surgeryDateField = document.getElementById("editSurgeryDateField");
+    const surgeryDate2Field = document.getElementById("editSurgeryDate2Field");
     const surgeryDateInput = document.getElementById("editSurgeryDate");
+    const surgeryDate2Input = document.getElementById("editSurgeryDate2");
 
     if (this.value === "Paciente agendou cirurgia") {
       surgeryDateField.style.display = "block";
+      surgeryDate2Field.style.display = "block";
     } else {
       surgeryDateField.style.display = "none";
+      surgeryDate2Field.style.display = "none";
       if (surgeryDateInput) {
         surgeryDateInput.value = "";
+      }
+      if (surgeryDate2Input) {
+        surgeryDate2Input.value = "";
       }
     }
   });
@@ -105,6 +141,8 @@ export function addSurgeryDateToEditModal() {
 export function populateSurgeryDateInEditModal(patient) {
   const surgeryDateInput = document.getElementById("editSurgeryDate");
   const surgeryDateField = document.getElementById("editSurgeryDateField");
+  const surgeryDate2Input = document.getElementById("editSurgeryDate2");
+  const surgeryDate2Field = document.getElementById("editSurgeryDate2Field");
 
   if (!surgeryDateInput || !surgeryDateField) return;
 
@@ -119,6 +157,22 @@ export function populateSurgeryDateInEditModal(patient) {
       surgeryDateField.style.display = "block";
     } else {
       surgeryDateField.style.display = "none";
+    }
+  }
+
+  // Preencher segunda data se existir
+  if (surgeryDate2Input && surgeryDate2Field) {
+    if (patient.surgeryDate2) {
+      surgeryDate2Input.value = patient.surgeryDate2;
+      surgeryDate2Field.style.display = "block";
+    } else {
+      surgeryDate2Input.value = "";
+      // Mostrar apenas se status for "Paciente agendou cirurgia"
+      if (patient.status === "Paciente agendou cirurgia") {
+        surgeryDate2Field.style.display = "block";
+      } else {
+        surgeryDate2Field.style.display = "none";
+      }
     }
   }
 }

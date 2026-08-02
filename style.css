@@ -2691,12 +2691,20 @@ body.login-page {
 
 .surgery-card.status-today {
   border-color: #f59e0b;
-  background: linear-gradient(135deg, var(--card-bg) 0%, rgba(251, 191, 36, 0.05) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--card-bg) 0%,
+    rgba(251, 191, 36, 0.05) 100%
+  );
 }
 
 .surgery-card.status-upcoming {
   border-color: var(--brand);
-  background: linear-gradient(135deg, var(--card-bg) 0%, var(--brand-muted) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--card-bg) 0%,
+    var(--brand-muted) 100%
+  );
 }
 
 .surgery-card.status-past {
@@ -2754,6 +2762,30 @@ body.login-page {
   font-size: 0.8rem;
   color: var(--text-light);
   text-transform: capitalize;
+}
+
+.surgery-dates-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.surgery-date-secondary {
+  padding: 0.25rem 0.5rem;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  border-left: 3px solid var(--brand);
+}
+
+.surgery-date-secondary strong {
+  font-size: 0.95rem;
+  color: var(--text-light);
+}
+
+.surgery-date-secondary small {
+  font-size: 0.75rem;
+  opacity: 0.8;
 }
 
 .surgery-card-body h4 {
@@ -2840,7 +2872,8 @@ body.login-page {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {
@@ -2849,13 +2882,16 @@ body.login-page {
 }
 
 @keyframes ring {
-  0%, 100% {
+  0%,
+  100% {
     transform: rotate(0deg);
   }
-  10%, 30% {
+  10%,
+  30% {
     transform: rotate(-10deg);
   }
-  20%, 40% {
+  20%,
+  40% {
     transform: rotate(10deg);
   }
   50% {
@@ -2871,6 +2907,43 @@ body.login-page {
   font-size: 0.85rem;
   margin-top: 0.75rem;
   border-left: 3px solid var(--brand);
+}
+
+.second-surgery-badge {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  color: #075985;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  border-left: 3px solid #0ea5e9;
+}
+
+.second-surgery-badge i {
+  color: #0ea5e9;
+}
+
+.surgery-date2-info {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  border-left: 3px solid #3b82f6;
+}
+
+.surgery-date2-info i {
+  color: #3b82f6;
+  opacity: 1;
 }
 
 .surgery-card-footer {
@@ -2955,11 +3028,11 @@ body.login-page {
   .surgery-cards {
     grid-template-columns: 1fr;
   }
-  
+
   .surgery-card-footer {
     flex-direction: column;
   }
-  
+
   .btn-whatsapp,
   .btn-view-patient {
     min-width: 100%;
@@ -3100,6 +3173,14 @@ body.login-page {
   font-size: 0.75rem;
 }
 
+.surgery-date-secondary strong {
+  font-size: 0.85rem;
+}
+
+.surgery-date-secondary small {
+  font-size: 0.7rem;
+}
+
 .surgery-card-body h4 {
   font-size: 1.05rem;
   margin-bottom: 0.5rem;
@@ -3162,6 +3243,18 @@ body.login-page {
   margin-top: 0.5rem;
 }
 
+.second-surgery-badge {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.surgery-date2-info {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
 .surgery-card-footer {
   gap: 0.4rem;
   padding-top: 0.75rem;
@@ -3183,16 +3276,16 @@ body.login-page {
   .surgery-cards {
     grid-template-columns: 1fr;
   }
-  
+
   .filter-group {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .date-filter-input {
     max-width: 100%;
   }
-  
+
   .btn-clear-filter {
     width: 100%;
     justify-content: center;

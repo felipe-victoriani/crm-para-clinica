@@ -20,12 +20,33 @@ function parseDateLocal(dateString) {
 
 /**
  * Obtém pacientes que agendaram cirurgia
+ * Se o paciente tem duas datas (surgeryDate e surgeryDate2), cria dois registros separados
  */
 export function getSurgeryScheduledPatients() {
   const allPatients = getPatients();
-  return allPatients.filter(
-    (p) => p.status === "Paciente agendou cirurgia" && p.surgeryDate,
-  );
+  const surgeryPatients = [];
+
+  allPatients.forEach((p) => {
+    if (p.status === "Paciente agendou cirurgia" && p.surgeryDate) {
+      // Adicionar card para a primeira data
+      surgeryPatients.push({
+        ...p,
+        _displayDate: p.surgeryDate,
+        _isSecondSurgery: false,
+      });
+
+      // Se houver segunda data, adicionar card separado
+      if (p.surgeryDate2) {
+        surgeryPatients.push({
+          ...p,
+          _displayDate: p.surgeryDate2,
+          _isSecondSurgery: true,
+        });
+      }
+    }
+  });
+
+  return surgeryPatients;
 }
 
 /**
@@ -102,7 +123,9 @@ export function formatDateWithWeekday(date) {
  * Gera mensagem de lembrete personalizada para WhatsApp
  */
 export function generateReminderMessage(patient, daysUntil) {
-  const surgeryDateInfo = formatDateWithWeekday(patient.surgeryDate);
+  // Usar a data de exibição específica do card (_displayDate) ou a primeira data como fallback
+  const dateToUse = patient._displayDate || patient.surgeryDate;
+  const surgeryDateInfo = formatDateWithWeekday(dateToUse);
   const surgeryTime = patient.surgeryTime || "07h15"; // Horário padrão se não especificado
 
   let message = `Olá, *${patient.name}*, tudo bem?\n\n`;
@@ -195,7 +218,7 @@ export function renderSurgerySchedule(filterDate = null) {
 
     // Aplicar filtro de data se fornecido
     if (filterDate) {
-      patients = patients.filter((p) => p.surgeryDate === filterDate);
+      patients = patients.filter((p) => p._displayDate === filterDate);
     }
 
     if (counter) {
@@ -248,20 +271,20 @@ export function renderSurgerySchedule(filterDate = null) {
 
     const futurePatients = patients
       .filter((p) => {
-        const surgery = parseDateLocal(p.surgeryDate);
+        const surgery = parseDateLocal(p._displayDate || p.surgeryDate);
         if (!surgery) return false;
         surgery.setHours(0, 0, 0, 0);
         return surgery > today;
       })
       .sort((a, b) => {
-        const dateA = parseDateLocal(a.surgeryDate);
-        const dateB = parseDateLocal(b.surgeryDate);
+        const dateA = parseDateLocal(a._displayDate || a.surgeryDate);
+        const dateB = parseDateLocal(b._displayDate || b.surgeryDate);
         if (!dateA || !dateB) return 0;
         return dateA - dateB;
       });
 
     const todayPatients = patients.filter((p) => {
-      const surgery = parseDateLocal(p.surgeryDate);
+      const surgery = parseDateLocal(p._displayDate || p.surgeryDate);
       if (!surgery) return false;
       surgery.setHours(0, 0, 0, 0);
       return surgery.getTime() === today.getTime();
@@ -269,14 +292,14 @@ export function renderSurgerySchedule(filterDate = null) {
 
     const pastPatients = patients
       .filter((p) => {
-        const surgery = parseDateLocal(p.surgeryDate);
+        const surgery = parseDateLocal(p._displayDate || p.surgeryDate);
         if (!surgery) return false;
         surgery.setHours(0, 0, 0, 0);
         return surgery < today;
       })
       .sort((a, b) => {
-        const dateA = parseDateLocal(a.surgeryDate);
-        const dateB = parseDateLocal(b.surgeryDate);
+        const dateA = parseDateLocal(a._displayDate || a.surgeryDate);
+        const dateB = parseDateLocal(b._displayDate || b.surgeryDate);
         if (!dateA || !dateB) return 0;
         return dateB - dateA;
       });
@@ -337,8 +360,10 @@ export function renderSurgerySchedule(filterDate = null) {
  * Renderiza card individual de cirurgia
  */
 function renderSurgeryCard(patient, type) {
-  const reminderInfo = calculateReminderDates(patient.surgeryDate);
-  const surgeryDateInfo = formatDateWithWeekday(patient.surgeryDate);
+  // Usar a data de exibição específica (_displayDate) ou a primeira data como fallback
+  const dateToDisplay = patient._displayDate || patient.surgeryDate;
+  const reminderInfo = calculateReminderDates(dateToDisplay);
+  const surgeryDateInfo = formatDateWithWeekday(dateToDisplay);
   const surgeryTime = patient.surgeryTime || "07h15";
 
   // Verificação de segurança - verificar se os dados são válidos
@@ -346,7 +371,7 @@ function renderSurgeryCard(patient, type) {
     console.warn(
       "Dados de cirurgia inválidos para paciente:",
       patient.id,
-      patient.surgeryDate,
+      dateToDisplay,
     );
     return "";
   }
@@ -407,8 +432,16 @@ function renderSurgeryCard(patient, type) {
       ? '<div class="warning-badge"><i class="fas fa-exclamation-triangle"></i> Cirurgia não é numa quarta-feira</div>'
       : "";
 
+  // Indicador se é a segunda cirurgia
+  const secondSurgeryBadge = patient._isSecondSurgery
+    ? '<div class="second-surgery-badge"><i class="fas fa-eye"></i> Segunda cirurgia (outro olho)</div>'
+    : "";
+
+  // ID único para o card (inclui a data para diferenciar quando há duas cirurgias)
+  const cardId = `${patient.id}-${dateToDisplay}`;
+
   return `
-    <div class="surgery-card ${statusClass}" data-patient-id="${patient.id}">
+    <div class="surgery-card ${statusClass}" data-patient-id="${patient.id}" data-card-id="${cardId}" data-display-date="${dateToDisplay}">
       <div class="surgery-card-header">
         <div class="surgery-status">
           <i class="fas ${statusIcon}"></i>
@@ -422,6 +455,7 @@ function renderSurgeryCard(patient, type) {
       
       <div class="surgery-card-body">
         <h4><i class="fas fa-user"></i> ${patient.name}</h4>
+        ${secondSurgeryBadge}
         <div class="surgery-details">
           <p><i class="fas fa-scissors"></i> <strong>Cirurgia:</strong> ${patient.surgeryType || "Não especificado"}</p>
           <p class="editable-time-row">
@@ -446,10 +480,10 @@ function renderSurgeryCard(patient, type) {
         ${
           type !== "past"
             ? `
-          <button class="btn-whatsapp btn-reminder-5" data-patient-id="${patient.id}" data-days="5" title="Lembrete 5 dias antes">
+          <button class="btn-whatsapp btn-reminder-5" data-card-id="${cardId}" data-days="5" title="Lembrete 5 dias antes">
             <i class="fab fa-whatsapp"></i> Lembrete Sexta (5 dias)
           </button>
-          <button class="btn-whatsapp btn-reminder-2" data-patient-id="${patient.id}" data-days="2" title="Lembrete 2 dias antes">
+          <button class="btn-whatsapp btn-reminder-2" data-card-id="${cardId}" data-days="2" title="Lembrete 2 dias antes">
             <i class="fab fa-whatsapp"></i> Lembrete Segunda (2 dias)
           </button>
         `
@@ -474,10 +508,15 @@ function attachWhatsAppListeners() {
   // Listeners para botões WhatsApp
   whatsappButtons.forEach((button) => {
     button.addEventListener("click", (e) => {
-      const patientId = e.currentTarget.dataset.patientId;
+      const cardId = e.currentTarget.dataset.cardId;
       const daysUntil = parseInt(e.currentTarget.dataset.days);
       const patients = getSurgeryScheduledPatients();
-      const patient = patients.find((p) => p.id === patientId);
+
+      // Encontrar o paciente usando o cardId que inclui a data
+      const patient = patients.find((p) => {
+        const pCardId = `${p.id}-${p._displayDate}`;
+        return pCardId === cardId;
+      });
 
       if (patient) {
         const message = generateReminderMessage(patient, daysUntil);
