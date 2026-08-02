@@ -18,6 +18,7 @@ import {
   doctors,
 } from "./patients.js";
 import { isFirebaseConfigured } from "./database.js";
+import { populateSurgeryDateInEditModal } from "./surgery-form.js";
 
 // ============================================================
 // Toast de feedback
@@ -625,7 +626,7 @@ window.editPatient = function (id) {
     currentEditId = id;
     if (editResponsible) editResponsible.value = patient.responsible || "";
     if (editDoctor) editDoctor.value = patient.doctor || "";
-    if (editPhone) editPhone.value = (patient.phone || "").replace(/\D/g, "");
+    if (editPhone) editPhone.value = patient.phone || "";
     editStatus.value = patient.status;
     editNotes.value = patient.notes || "";
 
@@ -642,6 +643,9 @@ window.editPatient = function (id) {
       const dateString = defaultDate.toISOString().split("T")[0];
       editScheduledActivation.value = dateString;
     }
+
+    // Preencher data da cirurgia
+    populateSurgeryDateInEditModal(patient);
 
     editModal.style.display = "flex"; // Usar flex para centralizar
   }
@@ -746,6 +750,10 @@ export function setupEventListeners() {
       ).getTime();
     }
 
+    // Capturar data da cirurgia (se fornecida)
+    const surgeryDateInput = formData.get("surgeryDate");
+    const surgeryDate = surgeryDateInput ? surgeryDateInput : null;
+
     const patient = {
       name: formData.get("name"),
       visitDate: formData.get("visitDate"),
@@ -753,9 +761,10 @@ export function setupEventListeners() {
       responsible: formData.get("responsible") || "",
       surgeryType: formData.get("surgeryType"),
       notes: formData.get("notes"),
-      phone: formData.get("phone"),
+      phone: formData.get("phone").replace(/\D/g, ""),
       status: formData.get("status"),
       scheduledActivationDate: scheduledActivationDate,
+      surgeryDate: surgeryDate,
     };
 
     try {
@@ -764,6 +773,11 @@ export function setupEventListeners() {
       renderDashboard();
       renderPatients();
       showToast("Paciente cadastrado com sucesso!");
+
+      // Atualizar agenda cirúrgica se disponível
+      if (typeof window.renderSurgerySchedule === "function") {
+        window.renderSurgerySchedule();
+      }
     } catch (error) {
       console.error("Erro ao cadastrar paciente:", error);
       showToast("Erro ao cadastrar paciente: " + error.message, "error");
@@ -1035,17 +1049,7 @@ export function setupEventListeners() {
     }
   };
 
-  // Auto-limpar formatação do campo de telefone no modal de edição
-  if (editPhone) {
-    editPhone.addEventListener("input", () => {
-      const cursor = editPhone.selectionStart;
-      const clean = editPhone.value.replace(/\D/g, "");
-      if (editPhone.value !== clean) {
-        editPhone.value = clean;
-        editPhone.setSelectionRange(cursor, cursor);
-      }
-    });
-  }
+  // A formatação do telefone agora é gerenciada por phone-mask.js
 
   editForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -1058,6 +1062,11 @@ export function setupEventListeners() {
         ).getTime();
       }
 
+      // Capturar data da cirurgia (se fornecida)
+      const editSurgeryDate = document.getElementById("editSurgeryDate");
+      const surgeryDate =
+        editSurgeryDate && editSurgeryDate.value ? editSurgeryDate.value : null;
+
       const updatedData = {
         responsible: editResponsible ? editResponsible.value : undefined,
         doctor: editDoctor ? editDoctor.value : undefined,
@@ -1065,12 +1074,18 @@ export function setupEventListeners() {
         status: editStatus.value,
         notes: editNotes.value,
         scheduledActivationDate: scheduledActivationDate,
+        surgeryDate: surgeryDate,
       };
       await updatePatient(currentEditId, updatedData);
       editModal.style.display = "none";
       renderDashboard();
       renderPatients();
       showToast("Dados do paciente atualizados!");
+
+      // Atualizar agenda cirúrgica se disponível
+      if (typeof window.renderSurgerySchedule === "function") {
+        window.renderSurgerySchedule();
+      }
     }
   });
 }
@@ -1096,4 +1111,9 @@ function showSection(sectionName) {
   if (targetLink) {
     targetLink.classList.add("active");
   }
+
+  // Disparar evento customizado para informar mudança de seção
+  document.dispatchEvent(
+    new CustomEvent("sectionChanged", { detail: sectionName }),
+  );
 }

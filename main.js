@@ -2,6 +2,14 @@
 import { logout, onAuthStateChange } from "./auth.js";
 import { loadPatients, cleanup, fixPatientsCreatedAt } from "./patients.js";
 import { renderDashboard, renderPatients, setupEventListeners } from "./ui.js";
+import {
+  initSurgerySchedule,
+  renderSurgerySchedule,
+} from "./surgery-schedule.js";
+import {
+  initSurgeryDateField,
+  addSurgeryDateToEditModal,
+} from "./surgery-form.js";
 
 // Inicializar autenticação
 const logoutBtn = document.getElementById("logoutBtn");
@@ -41,6 +49,9 @@ async function initApp() {
     renderDashboard();
     renderPatients();
     setupEventListeners();
+    initSurgerySchedule(); // Inicializar módulo de agenda cirúrgica
+    initSurgeryDateField(); // Inicializar lógica do campo de data da cirurgia
+    addSurgeryDateToEditModal(); // Adicionar campo de data no modal de edição
 
     // Mostrar seção inicial (dashboard)
     const dashboardLink = document.querySelector('[data-section="dashboard"]');
@@ -60,6 +71,9 @@ async function initApp() {
     }
   }
 }
+
+// Exportar renderSurgerySchedule para uso em outros módulos
+window.renderSurgerySchedule = renderSurgerySchedule;
 
 // Limpar recursos quando a página for fechada
 window.addEventListener("beforeunload", () => {

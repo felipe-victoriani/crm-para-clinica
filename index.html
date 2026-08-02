@@ -62,6 +62,14 @@
             >
           </li>
           <li>
+            <a
+              href="#surgery-schedule"
+              class="nav-link"
+              data-section="surgery-schedule"
+              ><i class="fas fa-calendar-plus"></i> Agenda Cirúrgica</a
+            >
+          </li>
+          <li>
             <a href="#settings" class="nav-link" data-section="settings"
               ><i class="fas fa-cog"></i> Configurações</a
             >
@@ -198,7 +206,7 @@
                     id="pPhone"
                     type="tel"
                     name="phone"
-                    placeholder="Somente números"
+                    placeholder="67999915653"
                     pattern="[0-9]+"
                     required
                   />
@@ -229,6 +237,30 @@
                       Não vai operar
                     </option>
                   </select>
+                </div>
+                <div
+                  class="form-field form-field--full"
+                  id="surgeryDateField"
+                  style="display: none"
+                >
+                  <label for="pSurgeryDate">Data da Cirurgia</label>
+                  <input
+                    id="pSurgeryDate"
+                    type="date"
+                    name="surgeryDate"
+                    placeholder="Data agendada para a cirurgia"
+                  />
+                  <small
+                    style="
+                      color: #888;
+                      font-size: 0.85rem;
+                      margin-top: 0.25rem;
+                      display: block;
+                    "
+                  >
+                    💡 Esta data será usada para calcular os lembretes
+                    automáticos
+                  </small>
                 </div>
                 <div class="form-field form-field--full">
                   <label for="pScheduledActivation"
@@ -307,6 +339,18 @@
             <div id="patientsList" class="patients-list">
               <!-- Lista de pacientes será renderizada aqui -->
             </div>
+          </div>
+        </section>
+
+        <section id="surgery-schedule-section" class="section">
+          <div class="section-header">
+            <h2>
+              <i class="fas fa-calendar-plus"></i> Agenda Cirúrgica
+              <span id="surgeryCounter" class="section-counter"></span>
+            </h2>
+          </div>
+          <div id="surgeryScheduleContent">
+            <!-- Conteúdo será renderizado via JavaScript -->
           </div>
         </section>
 
@@ -406,7 +450,7 @@
           <input
             id="editPhone"
             type="tel"
-            placeholder="Telefone (somente números)"
+            placeholder="67999915653"
             pattern="[0-9]+"
             required
           />
