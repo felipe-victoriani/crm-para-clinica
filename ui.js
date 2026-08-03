@@ -75,6 +75,10 @@ const notesTitle = document.getElementById("notesTitle");
 const notesContent = document.getElementById("notesContent");
 const closeNotesModal = document.querySelector(".notes-close");
 
+// Modal de preview do cartão de confirmação
+const cardPreviewModal = document.getElementById("cardPreviewModal");
+const closeCardPreviewModal = document.querySelector(".card-preview-close");
+
 // Mapeamento de rótulos amigáveis por situação
 const statusDisplayMap = {
   "Paciente solicitado risco": "Pedido de risco cirúrgico",
@@ -1045,12 +1049,21 @@ export function setupEventListeners() {
     notesModal.style.display = "none";
   };
 
+  if (closeCardPreviewModal) {
+    closeCardPreviewModal.onclick = function () {
+      cardPreviewModal.style.display = "none";
+    };
+  }
+
   window.onclick = function (event) {
     if (event.target === editModal) {
       editModal.style.display = "none";
     }
     if (event.target === notesModal) {
       notesModal.style.display = "none";
+    }
+    if (event.target === cardPreviewModal) {
+      cardPreviewModal.style.display = "none";
     }
   };
 

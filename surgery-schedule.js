@@ -1,5 +1,10 @@
 // surgery-schedule.js - Módulo de Agenda Cirúrgica
 import { getPatients, updatePatient } from "./patients.js";
+import {
+  gerarCartaoConfirmacao,
+  downloadCartaoImage,
+  copyCartaoToClipboard,
+} from "./cartaoConfirmacao.js";
 
 /**
  * Converte uma string de data YYYY-MM-DD para Date no timezone local
@@ -52,7 +57,7 @@ export function getSurgeryScheduledPatients() {
 /**
  * Calcula os dias da semana para lembretes
  * Cirurgias são às quartas-feiras
- * Lembretes: sexta anterior (5 dias) e segunda anterior (2 dias)
+ * Lembretes: sexta anterior (5 dias, mensagem de texto) e terça anterior (1 dia, cartão de confirmação)
  */
 export function calculateReminderDates(surgeryDate) {
   const surgery = parseDateLocal(surgeryDate);
@@ -66,9 +71,9 @@ export function calculateReminderDates(surgeryDate) {
   const friday = new Date(surgery);
   friday.setDate(surgery.getDate() - 5);
 
-  // Calcular segunda anterior (2 dias antes)
-  const monday = new Date(surgery);
-  monday.setDate(surgery.getDate() - 2);
+  // Calcular terça anterior (1 dia antes)
+  const tuesday = new Date(surgery);
+  tuesday.setDate(surgery.getDate() - 1);
 
   // Calcular dias restantes
   const today = new Date();
@@ -82,12 +87,12 @@ export function calculateReminderDates(surgeryDate) {
   return {
     surgery: surgery,
     friday: friday,
-    monday: monday,
+    tuesday: tuesday,
     isWednesday: isWednesday,
     daysUntilSurgery: daysUntilSurgery,
     isPast: daysUntilSurgery < 0,
     shouldSendFridayReminder: daysUntilSurgery === 5,
-    shouldSendMondayReminder: daysUntilSurgery === 2,
+    shouldSendTuesdayReminder: daysUntilSurgery === 1,
   };
 }
 
@@ -150,7 +155,8 @@ export function generateReminderMessage(patient, daysUntil) {
 }
 
 /**
- * Gera link do WhatsApp com mensagem pré-preenchida
+ * Gera link do WhatsApp, opcionalmente com mensagem pré-preenchida.
+ * Sem mensagem, apenas abre a conversa (usado no fluxo de colar imagem).
  */
 export function generateWhatsAppLink(phone, message) {
   // Remover caracteres não numéricos
@@ -162,10 +168,190 @@ export function generateWhatsAppLink(phone, message) {
     fullPhone = "55" + cleanPhone;
   }
 
+  if (!message) {
+    return `https://wa.me/${fullPhone}`;
+  }
+
   // Codificar mensagem para URL
   const encodedMessage = encodeURIComponent(message);
 
   return `https://wa.me/${fullPhone}?text=${encodedMessage}`;
+}
+
+/**
+ * Sufixo usado nos campos de controle (envio/confirmação) quando o card
+ * se refere à segunda cirurgia do paciente (outro olho).
+ */
+function fieldSuffix(patient) {
+  return patient._isSecondSurgery ? "2" : "";
+}
+
+function fridaySentField(patient) {
+  return "reminderFridaySentAt" + fieldSuffix(patient);
+}
+
+function tuesdaySentField(patient) {
+  return "reminderTuesdaySentAt" + fieldSuffix(patient);
+}
+
+function confirmedField(patient) {
+  return "surgeryConfirmed" + fieldSuffix(patient);
+}
+
+function confirmedAtField(patient) {
+  return "surgeryConfirmedAt" + fieldSuffix(patient);
+}
+
+function getReminderSentAt(patient, type) {
+  const field = type === "friday" ? fridaySentField(patient) : tuesdaySentField(patient);
+  return patient[field] || null;
+}
+
+function isSurgeryConfirmed(patient) {
+  return !!patient[confirmedField(patient)];
+}
+
+/**
+ * Formata um timestamp de envio/confirmação como "DD/MM às HHhMM"
+ */
+function formatSentAt(timestamp) {
+  const d = new Date(timestamp);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  return `${day}/${month} às ${hours}h${minutes}`;
+}
+
+/**
+ * Encontra, dentre os pacientes com cirurgia agendada, o card correspondente
+ * a um cardId (patientId-data), já que um paciente pode ter 2 cirurgias.
+ */
+function findPatientByCardId(cardId) {
+  const patients = getSurgeryScheduledPatients();
+  return patients.find((p) => `${p.id}-${p._displayDate}` === cardId);
+}
+
+/**
+ * Envia o lembrete de texto de sexta-feira via WhatsApp e registra o envio.
+ */
+async function sendFridayReminder(patient) {
+  const dateToUse = patient._displayDate || patient.surgeryDate;
+  const reminderInfo = calculateReminderDates(dateToUse);
+  const daysUntil = reminderInfo ? reminderInfo.daysUntilSurgery : 5;
+
+  const message = generateReminderMessage(patient, daysUntil);
+  const whatsappLink = generateWhatsAppLink(patient.phone, message);
+  window.open(whatsappLink, "_blank");
+
+  await updatePatient(patient.id, {
+    [fridaySentField(patient)]: Date.now(),
+  });
+}
+
+/**
+ * Gera o cartão de confirmação de terça-feira, tenta copiar pra área de
+ * transferência e abrir o WhatsApp do paciente; se o navegador não suportar,
+ * cai no fallback de baixar/anexar manualmente. Registra o envio quando o
+ * usuário efetivamente completa uma das duas ações.
+ */
+async function sendTuesdayCard(patient) {
+  const dateToUse = patient._displayDate || patient.surgeryDate;
+  const surgeryDateInfo = formatDateWithWeekday(dateToUse);
+  const dataCirurgia = surgeryDateInfo.short
+    ? surgeryDateInfo.short.slice(0, 5) // DD/MM/AAAA -> DD/MM
+    : "";
+
+  const { dataUrl, blob, fileName } = await gerarCartaoConfirmacao({
+    nome: patient.name,
+    dataCirurgia,
+    horario: patient.surgeryTime || "07h15",
+  });
+
+  try {
+    await copyCartaoToClipboard(blob);
+    const chatLink = generateWhatsAppLink(patient.phone, null);
+    window.open(chatLink, "_blank");
+
+    await updatePatient(patient.id, {
+      [tuesdaySentField(patient)]: Date.now(),
+    });
+
+    if (typeof window.showToast === "function") {
+      window.showToast(
+        "Imagem copiada! Cole (Ctrl+V) na conversa que acabou de abrir e envie.",
+        "success",
+      );
+    } else {
+      alert(
+        "Imagem copiada! Cole (Ctrl+V) na conversa que acabou de abrir e envie.",
+      );
+    }
+  } catch (clipboardError) {
+    console.warn(
+      "Não foi possível copiar automaticamente, caindo para download manual:",
+      clipboardError,
+    );
+    if (typeof window.showToast === "function") {
+      window.showToast(
+        "Não foi possível copiar automaticamente neste navegador. Baixe e anexe manualmente.",
+        "error",
+      );
+    }
+    openCardPreviewModal(dataUrl, fileName, patient);
+  }
+}
+
+/**
+ * Alterna a confirmação manual de presença do paciente para a cirurgia exibida.
+ */
+async function toggleSurgeryConfirmed(patient) {
+  const newValue = !isSurgeryConfirmed(patient);
+  await updatePatient(patient.id, {
+    [confirmedField(patient)]: newValue,
+    [confirmedAtField(patient)]: newValue ? Date.now() : null,
+  });
+  return newValue;
+}
+
+/**
+ * Re-renderiza a agenda mantendo o filtro de data atualmente aplicado.
+ */
+function rerenderKeepingFilter() {
+  const dateFilter = document.getElementById("surgeryDateFilter");
+  renderSurgerySchedule(
+    dateFilter && dateFilter.value ? dateFilter.value : null,
+  );
+}
+
+/**
+ * Lista os lembretes (sexta ou terça) que deveriam ser enviados hoje e ainda
+ * não foram registrados como enviados, para a fila de "Lembretes de Hoje".
+ */
+function getPendingRemindersToday() {
+  const patients = getSurgeryScheduledPatients();
+  const pending = [];
+
+  patients.forEach((patient) => {
+    const dateToUse = patient._displayDate || patient.surgeryDate;
+    const reminderInfo = calculateReminderDates(dateToUse);
+    if (!reminderInfo || reminderInfo.isPast) return;
+
+    if (
+      reminderInfo.shouldSendFridayReminder &&
+      !getReminderSentAt(patient, "friday")
+    ) {
+      pending.push({ patient, type: "friday" });
+    }
+    if (
+      reminderInfo.shouldSendTuesdayReminder &&
+      !getReminderSentAt(patient, "tuesday")
+    ) {
+      pending.push({ patient, type: "tuesday" });
+    }
+  });
+
+  return pending;
 }
 
 /**
@@ -253,6 +439,40 @@ export function renderSurgerySchedule(filterDate = null) {
     </div>
   `;
 
+    // Fila de lembretes pendentes de hoje (independe do filtro de data ativo)
+    const pendingToday = getPendingRemindersToday();
+    if (pendingToday.length > 0) {
+      html += `
+      <div class="surgery-section surgery-pending-today">
+        <h3><i class="fas fa-bell"></i> Lembretes Pendentes de Hoje (${pendingToday.length})</h3>
+        <div class="pending-reminders-list">
+          ${pendingToday
+            .map(({ patient, type }) => {
+              const cardId = `${patient.id}-${patient._displayDate}`;
+              const isFriday = type === "friday";
+              const label = isFriday
+                ? "Lembrete Sexta (texto)"
+                : "Cartão de Confirmação (terça)";
+              const iconSet = isFriday ? "fab" : "fas";
+              const icon = isFriday ? "fa-whatsapp" : "fa-id-card";
+              return `
+              <div class="pending-reminder-row">
+                <div class="pending-reminder-info">
+                  <strong>${patient.name}</strong>
+                  <span class="pending-reminder-type">${label}</span>
+                </div>
+                <button class="btn-send-pending" data-card-id="${cardId}" data-type="${type}">
+                  <i class="${iconSet} ${icon}"></i> Enviar
+                </button>
+              </div>
+            `;
+            })
+            .join("")}
+        </div>
+      </div>
+    `;
+    }
+
     if (patients.length === 0) {
       html += `
       <div class="empty-state">
@@ -263,6 +483,7 @@ export function renderSurgerySchedule(filterDate = null) {
     `;
       container.innerHTML = html;
       attachFilterListeners();
+      attachPendingReminderListeners();
       return;
     }
 
@@ -342,6 +563,9 @@ export function renderSurgerySchedule(filterDate = null) {
 
     // Adicionar event listeners
     attachWhatsAppListeners();
+    attachCardConfirmacaoListeners();
+    attachConfirmPresenceListeners();
+    attachPendingReminderListeners();
     attachFilterListeners();
   } catch (error) {
     console.error("Erro ao renderizar agenda cirúrgica:", error);
@@ -406,24 +630,54 @@ function renderSurgeryCard(patient, type) {
     short: "",
     dayName: "",
   };
-  const mondayInfo = formatDateWithWeekday(reminderInfo.monday) || {
+  const tuesdayInfo = formatDateWithWeekday(reminderInfo.tuesday) || {
     full: "",
     short: "",
     dayName: "",
   };
 
+  const fridaySentAt = getReminderSentAt(patient, "friday");
+  const tuesdaySentAt = getReminderSentAt(patient, "tuesday");
+  const confirmed = isSurgeryConfirmed(patient);
+
   let reminderStatus = "";
-  if (type === "upcoming") {
-    if (reminderInfo.shouldSendFridayReminder) {
-      reminderStatus =
+  if (type !== "past") {
+    // Bloco do lembrete de sexta (texto)
+    if (reminderInfo.shouldSendFridayReminder && !fridaySentAt) {
+      reminderStatus +=
         '<div class="reminder-alert reminder-friday"><i class="fas fa-bell"></i> Enviar lembrete de sexta-feira HOJE</div>';
-    } else if (reminderInfo.shouldSendMondayReminder) {
-      reminderStatus =
-        '<div class="reminder-alert reminder-monday"><i class="fas fa-bell"></i> Enviar lembrete de segunda-feira HOJE</div>';
-    } else if (reminderInfo.daysUntilSurgery > 5) {
-      reminderStatus = `<div class="reminder-info">Próximo lembrete: ${fridayInfo.short} (sexta)</div>`;
-    } else if (reminderInfo.daysUntilSurgery > 2) {
-      reminderStatus = `<div class="reminder-info">Próximo lembrete: ${mondayInfo.short} (segunda)</div>`;
+    } else if (
+      !fridaySentAt &&
+      reminderInfo.daysUntilSurgery < 5 &&
+      reminderInfo.daysUntilSurgery > 1
+    ) {
+      reminderStatus +=
+        '<div class="reminder-alert reminder-overdue"><i class="fas fa-triangle-exclamation"></i> Lembrete de sexta atrasado — ainda não enviado</div>';
+    } else if (!fridaySentAt && reminderInfo.daysUntilSurgery > 5) {
+      reminderStatus += `<div class="reminder-info">Próximo lembrete: ${fridayInfo.short} (sexta)</div>`;
+    }
+
+    // Bloco do cartão de terça
+    if (reminderInfo.shouldSendTuesdayReminder && !tuesdaySentAt) {
+      reminderStatus +=
+        '<div class="reminder-alert reminder-tuesday"><i class="fas fa-bell"></i> Enviar cartão de confirmação de terça-feira HOJE</div>';
+    } else if (!tuesdaySentAt && reminderInfo.daysUntilSurgery <= 0) {
+      reminderStatus +=
+        '<div class="reminder-alert reminder-overdue"><i class="fas fa-triangle-exclamation"></i> Cartão de terça atrasado — ainda não enviado</div>';
+    } else if (
+      !tuesdaySentAt &&
+      reminderInfo.daysUntilSurgery > 1 &&
+      reminderInfo.daysUntilSurgery <= 5
+    ) {
+      reminderStatus += `<div class="reminder-info">Próximo lembrete: ${tuesdayInfo.short} (terça)</div>`;
+    }
+
+    // Badges de confirmação de envio
+    if (fridaySentAt) {
+      reminderStatus += `<div class="reminder-sent-badge"><i class="fas fa-check-circle"></i> Sexta enviada em ${formatSentAt(fridaySentAt)}</div>`;
+    }
+    if (tuesdaySentAt) {
+      reminderStatus += `<div class="reminder-sent-badge"><i class="fas fa-check-circle"></i> Cartão enviado em ${formatSentAt(tuesdaySentAt)}</div>`;
     }
   }
 
@@ -480,11 +734,14 @@ function renderSurgeryCard(patient, type) {
         ${
           type !== "past"
             ? `
-          <button class="btn-whatsapp btn-reminder-5" data-card-id="${cardId}" data-days="5" title="Lembrete 5 dias antes">
-            <i class="fab fa-whatsapp"></i> Lembrete Sexta (5 dias)
+          <button class="btn-whatsapp btn-reminder-5 ${fridaySentAt ? "btn-sent" : ""}" data-card-id="${cardId}" title="${fridaySentAt ? "Reenviar lembrete de sexta" : "Lembrete 5 dias antes"}">
+            <i class="fab fa-whatsapp"></i> ${fridaySentAt ? "Reenviar Sexta" : "Lembrete Sexta (5 dias)"}
           </button>
-          <button class="btn-whatsapp btn-reminder-2" data-card-id="${cardId}" data-days="2" title="Lembrete 2 dias antes">
-            <i class="fab fa-whatsapp"></i> Lembrete Segunda (2 dias)
+          <button class="btn-card-confirmacao ${tuesdaySentAt ? "btn-sent" : ""}" data-card-id="${cardId}" title="${tuesdaySentAt ? "Reenviar cartão de confirmação" : "Copia o cartão e abre o WhatsApp do paciente (cole com Ctrl+V)"}">
+            <i class="fas fa-id-card"></i> ${tuesdaySentAt ? "Reenviar Cartão" : "Enviar Cartão (terça)"}
+          </button>
+          <button class="btn-confirm-presence ${confirmed ? "btn-confirmed" : ""}" data-card-id="${cardId}" title="Marcar/desmarcar confirmação de presença do paciente">
+            <i class="fas ${confirmed ? "fa-check-circle" : "fa-circle-question"}"></i> ${confirmed ? "Presença Confirmada" : "Marcar Presença"}
           </button>
         `
             : ""
@@ -505,23 +762,21 @@ function attachWhatsAppListeners() {
   const viewButtons = document.querySelectorAll(".btn-view-patient");
   const timeInputs = document.querySelectorAll(".surgery-time-input");
 
-  // Listeners para botões WhatsApp
+  // Listeners para botões WhatsApp (lembrete de sexta)
   whatsappButtons.forEach((button) => {
-    button.addEventListener("click", (e) => {
+    button.addEventListener("click", async (e) => {
       const cardId = e.currentTarget.dataset.cardId;
-      const daysUntil = parseInt(e.currentTarget.dataset.days);
-      const patients = getSurgeryScheduledPatients();
+      const patient = findPatientByCardId(cardId);
+      if (!patient) return;
 
-      // Encontrar o paciente usando o cardId que inclui a data
-      const patient = patients.find((p) => {
-        const pCardId = `${p.id}-${p._displayDate}`;
-        return pCardId === cardId;
-      });
-
-      if (patient) {
-        const message = generateReminderMessage(patient, daysUntil);
-        const whatsappLink = generateWhatsAppLink(patient.phone, message);
-        window.open(whatsappLink, "_blank");
+      try {
+        await sendFridayReminder(patient);
+        rerenderKeepingFilter();
+      } catch (error) {
+        console.error("Erro ao enviar lembrete de sexta:", error);
+        if (typeof window.showToast === "function") {
+          window.showToast("Erro ao registrar envio do lembrete", "error");
+        }
       }
     });
   });
@@ -574,6 +829,142 @@ function attachWhatsAppListeners() {
       }
     });
   });
+}
+
+/**
+ * Adiciona listeners para o botão de enviar cartão de confirmação
+ */
+function attachCardConfirmacaoListeners() {
+  const cardButtons = document.querySelectorAll(".btn-card-confirmacao");
+
+  cardButtons.forEach((button) => {
+    button.addEventListener("click", async (e) => {
+      const cardId = e.currentTarget.dataset.cardId;
+      const patient = findPatientByCardId(cardId);
+      if (!patient) return;
+
+      const originalLabel = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
+
+      try {
+        await sendTuesdayCard(patient);
+        rerenderKeepingFilter();
+      } catch (error) {
+        console.error("Erro ao gerar cartão de confirmação:", error);
+        if (typeof window.showToast === "function") {
+          window.showToast(
+            error.message || "Erro ao gerar cartão de confirmação",
+            "error",
+          );
+        } else {
+          alert(error.message || "Erro ao gerar cartão de confirmação");
+        }
+        button.disabled = false;
+        button.innerHTML = originalLabel;
+      }
+    });
+  });
+}
+
+/**
+ * Adiciona listeners para o botão de confirmar presença do paciente
+ */
+function attachConfirmPresenceListeners() {
+  const confirmButtons = document.querySelectorAll(".btn-confirm-presence");
+
+  confirmButtons.forEach((button) => {
+    button.addEventListener("click", async (e) => {
+      const cardId = e.currentTarget.dataset.cardId;
+      const patient = findPatientByCardId(cardId);
+      if (!patient) return;
+
+      button.disabled = true;
+      try {
+        await toggleSurgeryConfirmed(patient);
+        rerenderKeepingFilter();
+      } catch (error) {
+        console.error("Erro ao atualizar confirmação de presença:", error);
+        if (typeof window.showToast === "function") {
+          window.showToast("Erro ao atualizar confirmação de presença", "error");
+        }
+        button.disabled = false;
+      }
+    });
+  });
+}
+
+/**
+ * Adiciona listeners para os botões da fila de "Lembretes Pendentes de Hoje"
+ */
+function attachPendingReminderListeners() {
+  const pendingButtons = document.querySelectorAll(".btn-send-pending");
+
+  pendingButtons.forEach((button) => {
+    button.addEventListener("click", async (e) => {
+      const cardId = e.currentTarget.dataset.cardId;
+      const type = e.currentTarget.dataset.type;
+      const patient = findPatientByCardId(cardId);
+      if (!patient) return;
+
+      const originalLabel = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+      try {
+        if (type === "friday") {
+          await sendFridayReminder(patient);
+        } else {
+          await sendTuesdayCard(patient);
+        }
+        rerenderKeepingFilter();
+      } catch (error) {
+        console.error("Erro ao enviar lembrete pendente:", error);
+        if (typeof window.showToast === "function") {
+          window.showToast(
+            error.message || "Erro ao enviar lembrete",
+            "error",
+          );
+        }
+        button.disabled = false;
+        button.innerHTML = originalLabel;
+      }
+    });
+  });
+}
+
+/**
+ * Abre o modal de preview do cartão gerado, com botão de download.
+ * Usado como fallback quando o navegador não suporta copiar a imagem
+ * automaticamente para a área de transferência.
+ */
+function openCardPreviewModal(dataUrl, fileName, patient) {
+  const modal = document.getElementById("cardPreviewModal");
+  const img = document.getElementById("cardPreviewImg");
+  const downloadBtn = document.getElementById("cardPreviewDownloadBtn");
+
+  if (!modal || !img || !downloadBtn) {
+    // Modal não disponível: cair no download direto
+    downloadCartaoImage(dataUrl, fileName);
+    return;
+  }
+
+  img.src = dataUrl;
+  downloadBtn.onclick = async () => {
+    downloadCartaoImage(dataUrl, fileName);
+    modal.style.display = "none";
+    if (patient) {
+      try {
+        await updatePatient(patient.id, {
+          [tuesdaySentField(patient)]: Date.now(),
+        });
+        rerenderKeepingFilter();
+      } catch (error) {
+        console.error("Erro ao registrar envio do cartão:", error);
+      }
+    }
+  };
+  modal.style.display = "flex";
 }
 
 /**
