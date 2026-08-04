@@ -197,7 +197,7 @@ export const CARTAO_TEMPLATE = `
 
   <div class="cc-alert">
     <b>Atenção — uso de Mounjaro® (tirzepatida):</b> suspenda a medicação
-    com antecedência mínima de <b>15 dias</b> da cirurgia, conforme
+    com antecedência mínima de <b>20 dias</b> da cirurgia, conforme
     protocolo de segurança anestésica.
   </div>
 
