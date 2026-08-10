@@ -528,7 +528,7 @@ export function renderSurgerySchedule(filterDate = null) {
     // Cirurgias de hoje
     if (todayPatients.length > 0) {
       html += '<div class="surgery-section surgery-today">';
-      html += '<h3><i class="fas fa-star"></i> Cirurgias de Hoje</h3>';
+      html += `<h3><i class="fas fa-star"></i> Cirurgias de Hoje <span class="surgery-day-count">${todayPatients.length} cirurgia${todayPatients.length !== 1 ? "s" : ""}</span></h3>`;
       html += '<div class="surgery-cards">';
       todayPatients.forEach((patient) => {
         html += renderSurgeryCard(patient, "today");
@@ -536,16 +536,24 @@ export function renderSurgerySchedule(filterDate = null) {
       html += "</div></div>";
     }
 
-    // Próximas cirurgias
+    // Próximas cirurgias (agrupadas por dia, com contagem por dia)
     if (futurePatients.length > 0) {
       html += '<div class="surgery-section surgery-upcoming">';
       html +=
         '<h3><i class="fas fa-calendar-days"></i> Próximas Cirurgias</h3>';
-      html += '<div class="surgery-cards">';
-      futurePatients.forEach((patient) => {
-        html += renderSurgeryCard(patient, "upcoming");
+
+      groupByDisplayDate(futurePatients).forEach((group) => {
+        const dateInfo = formatDateWithWeekday(group.date);
+        html += '<div class="surgery-day-group">';
+        html += `<h4 class="surgery-day-header"><i class="fas fa-calendar-day"></i> ${dateInfo.full} <span class="surgery-day-count">${group.patients.length} cirurgia${group.patients.length !== 1 ? "s" : ""}</span></h4>`;
+        html += '<div class="surgery-cards">';
+        group.patients.forEach((patient) => {
+          html += renderSurgeryCard(patient, "upcoming");
+        });
+        html += "</div></div>";
       });
-      html += "</div></div>";
+
+      html += "</div>";
     }
 
     // Cirurgias passadas (últimas 10)
@@ -578,6 +586,26 @@ export function renderSurgerySchedule(filterDate = null) {
       </div>
     `;
   }
+}
+
+/**
+ * Agrupa uma lista de pacientes (já ordenada) por data de exibição,
+ * preservando a ordem das datas e retornando a quantidade de cirurgias por dia.
+ */
+function groupByDisplayDate(patients) {
+  const groups = [];
+  const indexByDate = {};
+
+  patients.forEach((patient) => {
+    const date = patient._displayDate || patient.surgeryDate;
+    if (indexByDate[date] === undefined) {
+      indexByDate[date] = groups.length;
+      groups.push({ date, patients: [] });
+    }
+    groups[indexByDate[date]].patients.push(patient);
+  });
+
+  return groups;
 }
 
 /**

@@ -2722,6 +2722,40 @@ body.login-page {
   gap: 1.25rem;
 }
 
+.surgery-day-count {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--brand);
+  background: rgba(37, 99, 235, 0.1);
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  margin-left: 0.25rem;
+}
+
+.surgery-day-group {
+  margin-bottom: 1.75rem;
+}
+
+.surgery-day-group:last-child {
+  margin-bottom: 0;
+}
+
+.surgery-day-header {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.surgery-day-header i {
+  color: var(--brand);
+}
+
 .surgery-card {
   background: var(--card-bg);
   border-radius: 12px;
