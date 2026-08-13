@@ -11,6 +11,7 @@ import {
   updatePatient,
   removePatient,
   addPatient,
+  findDuplicatePatients,
   daysSince,
   daysRemaining,
   getUrgency,
@@ -775,6 +776,19 @@ export function setupEventListeners() {
       surgeryDate: surgeryDate,
       surgeryDate2: surgeryDate2,
     };
+
+    const duplicates = findDuplicatePatients(patient.name, patient.phone);
+    if (duplicates.length > 0) {
+      const lista = duplicates
+        .map((p) => `• ${p.name} — ${p.status}${p.doctor ? ` (${p.doctor})` : ""}`)
+        .join("\n");
+      const confirmMessage =
+        `Já existe cadastro com o mesmo nome ou telefone:\n\n${lista}\n\n` +
+        `Deseja cadastrar mesmo assim?`;
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+    }
 
     try {
       await addPatient(patient);

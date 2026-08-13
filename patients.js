@@ -104,6 +104,34 @@ export function getPatients() {
   return patients;
 }
 
+// Normaliza nome para comparação (remove acentos, espaços extras, caixa)
+function normalizeName(name) {
+  return (name || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+// Busca pacientes já cadastrados com o mesmo telefone ou mesmo nome,
+// para alertar sobre possível cadastro duplicado (comum com múltiplos usuários)
+export function findDuplicatePatients(name, phone, excludeId = null) {
+  const normalizedName = normalizeName(name);
+  const normalizedPhone = (phone || "").replace(/\D/g, "");
+
+  return patients.filter((p) => {
+    if (excludeId && p.id === excludeId) return false;
+
+    const phoneMatches =
+      normalizedPhone && p.phone && p.phone.replace(/\D/g, "") === normalizedPhone;
+    const nameMatches =
+      normalizedName && normalizeName(p.name) === normalizedName;
+
+    return phoneMatches || nameMatches;
+  });
+}
+
 // Adicionar paciente
 export async function addPatient(patientData) {
   const now = Date.now();
