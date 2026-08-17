@@ -1732,14 +1732,15 @@ header h1 {
   font-weight: 700;
 }
 
-/* Login page com sidebar escura como fundo */
+/* Login page com imagem de fundo (logo) e card encostado na lateral */
 body.login-page {
-  background: #111827;
+  background: url("img/logo_3.jpeg") center/cover no-repeat fixed;
+  background-color: #111827;
   min-height: 100vh;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
+  justify-content: flex-end;
+  padding: 1.5rem 6vw;
 }
 
 .login-wrapper {
@@ -1748,50 +1749,17 @@ body.login-page {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.75rem;
-}
-
-.login-brand {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-.login-logo {
-  width: 58px;
-  height: 58px;
-  background: var(--brand);
-  border-radius: var(--r-xl);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.55rem;
-  color: #fff;
-  box-shadow: 0 4px 16px rgba(3, 105, 161, 0.35);
-  margin-bottom: 0.2rem;
-}
-
-.login-title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.01em;
-}
-
-.login-subtitle {
-  font-size: 0.83rem;
-  color: rgba(255, 255, 255, 0.4);
 }
 
 .login-card {
   width: 100%;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: var(--r-xl);
   padding: 2rem;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
 }
 
 .login-card h2 {
