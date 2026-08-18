@@ -98,6 +98,52 @@ export async function gerarCartaoConfirmacao(dadosPaciente) {
 }
 
 /**
+ * Renderiza um trecho de HTML arbitrário (usando as classes/CSS já carregados
+ * na página) como imagem PNG. Útil para gerar imagens de conteúdo que não é
+ * um cartão de paciente (ex: mapa cirúrgico do dia) reaproveitando o mesmo
+ * pipeline (html2canvas + clipboard) do cartão de confirmação.
+ *
+ * @param {string} html
+ * @param {{width?: number, backgroundColor?: string, fileName?: string}} [options]
+ * @returns {Promise<{dataUrl: string, blob: Blob, fileName: string}>}
+ */
+export async function gerarImagemHtml(html, options = {}) {
+  const {
+    width = 1300,
+    backgroundColor = "#ffffff",
+    fileName = "imagem.png",
+  } = options;
+
+  const html2canvas = await loadHtml2Canvas();
+
+  const container = document.createElement("div");
+  container.style.position = "absolute";
+  container.style.left = "-9999px";
+  container.style.top = "0";
+  container.style.width = `${width}px`;
+  container.style.background = backgroundColor;
+  container.innerHTML = html;
+  document.body.appendChild(container);
+
+  try {
+    const canvas = await html2canvas(container, {
+      backgroundColor,
+      scale: 2,
+      useCORS: true,
+    });
+
+    const dataUrl = canvas.toDataURL("image/png");
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/png"),
+    );
+
+    return { dataUrl, blob, fileName };
+  } finally {
+    document.body.removeChild(container);
+  }
+}
+
+/**
  * Dispara o download de uma imagem gerada via URL de dados (data URL).
  */
 export function downloadCartaoImage(dataUrl, fileName) {

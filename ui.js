@@ -62,6 +62,8 @@ const editForm = document.getElementById("editForm");
 const editResponsible = document.getElementById("editResponsible");
 const editDoctor = document.getElementById("editDoctor");
 const editPhone = document.getElementById("editPhone");
+const editBirthDate = document.getElementById("editBirthDate");
+const editConvenio = document.getElementById("editConvenio");
 const editStatus = document.getElementById("editStatus");
 const editNotes = document.getElementById("editNotes");
 const editScheduledActivation = document.getElementById(
@@ -632,6 +634,8 @@ window.editPatient = function (id) {
     if (editResponsible) editResponsible.value = patient.responsible || "";
     if (editDoctor) editDoctor.value = patient.doctor || "";
     if (editPhone) editPhone.value = patient.phone || "";
+    if (editBirthDate) editBirthDate.value = patient.birthDate || "";
+    if (editConvenio) editConvenio.value = patient.convenio || "";
     editStatus.value = patient.status;
     editNotes.value = patient.notes || "";
 
@@ -766,6 +770,8 @@ export function setupEventListeners() {
     const patient = {
       name: formData.get("name"),
       visitDate: formData.get("visitDate"),
+      birthDate: formData.get("birthDate") || "",
+      convenio: formData.get("convenio") || "",
       doctor: formData.get("doctor"),
       responsible: formData.get("responsible") || "",
       surgeryType: formData.get("surgeryType"),
@@ -775,6 +781,12 @@ export function setupEventListeners() {
       scheduledActivationDate: scheduledActivationDate,
       surgeryDate: surgeryDate,
       surgeryDate2: surgeryDate2,
+      eye: formData.get("eye") || "",
+      qty: formData.get("qty") || "",
+      lio: formData.get("lio") || "",
+      eye2: formData.get("eye2") || "",
+      qty2: formData.get("qty2") || "",
+      lio2: formData.get("lio2") || "",
     };
 
     const duplicates = findDuplicatePatients(patient.name, patient.phone);
@@ -1106,15 +1118,31 @@ export function setupEventListeners() {
           ? editSurgeryDate2.value
           : null;
 
+      // Capturar campos do mapa cirúrgico (olho/qt/lio) por cirurgia, se presentes
+      const editEye = document.getElementById("editEye");
+      const editQty = document.getElementById("editQty");
+      const editLio = document.getElementById("editLio");
+      const editEye2 = document.getElementById("editEye2");
+      const editQty2 = document.getElementById("editQty2");
+      const editLio2 = document.getElementById("editLio2");
+
       const updatedData = {
         responsible: editResponsible ? editResponsible.value : undefined,
         doctor: editDoctor ? editDoctor.value : undefined,
         phone: editPhone ? editPhone.value.replace(/\D/g, "") : undefined,
+        birthDate: editBirthDate ? editBirthDate.value : undefined,
+        convenio: editConvenio ? editConvenio.value : undefined,
         status: editStatus.value,
         notes: editNotes.value,
         scheduledActivationDate: scheduledActivationDate,
         surgeryDate: surgeryDate,
         surgeryDate2: surgeryDate2,
+        eye: editEye ? editEye.value : undefined,
+        qty: editQty ? editQty.value : undefined,
+        lio: editLio ? editLio.value : undefined,
+        eye2: editEye2 ? editEye2.value : undefined,
+        qty2: editQty2 ? editQty2.value : undefined,
+        lio2: editLio2 ? editLio2.value : undefined,
       };
       await updatePatient(currentEditId, updatedData);
       editModal.style.display = "none";

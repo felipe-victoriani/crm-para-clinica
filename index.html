@@ -174,6 +174,31 @@
                   />
                 </div>
                 <div class="form-field">
+                  <label for="pBirthDate">Data de nascimento</label>
+                  <input id="pBirthDate" type="date" name="birthDate" />
+                </div>
+                <div class="form-field">
+                  <label for="pConvenio">Convênio</label>
+                  <input
+                    id="pConvenio"
+                    type="text"
+                    name="convenio"
+                    list="convenioOptions"
+                    placeholder="Ex: UNIMED, PARTICULAR..."
+                  />
+                  <datalist id="convenioOptions">
+                    <option value="UNIMED"></option>
+                    <option value="CASSEMS"></option>
+                    <option value="IMPCG"></option>
+                    <option value="UNISAUDE"></option>
+                    <option value="PARTICULAR"></option>
+                    <option value="BRADESCO SAÚDE"></option>
+                    <option value="SULAMÉRICA"></option>
+                    <option value="AMIL"></option>
+                    <option value="GEAP"></option>
+                  </datalist>
+                </div>
+                <div class="form-field">
                   <label for="pDoctor">Médico</label>
                   <select id="pDoctor" name="doctor" required>
                     <option value="">Selecione o médico</option>
@@ -261,6 +286,30 @@
                     💡 Normalmente a cirurgia de um olho (esta data calcula os
                     lembretes)
                   </small>
+                  <div class="surgery-map-fields">
+                    <div class="form-field">
+                      <label for="pEye">Olho</label>
+                      <select id="pEye" name="eye">
+                        <option value="">Selecione</option>
+                        <option value="OD">OD</option>
+                        <option value="OE">OE</option>
+                        <option value="AO">AO</option>
+                      </select>
+                    </div>
+                    <div class="form-field">
+                      <label for="pQty">Qt</label>
+                      <input id="pQty" type="number" name="qty" min="1" value="1" />
+                    </div>
+                    <div class="form-field">
+                      <label for="pLio">LIO</label>
+                      <input
+                        id="pLio"
+                        type="text"
+                        name="lio"
+                        placeholder="Ex: EYHANCE +21.5"
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div
                   class="form-field form-field--full"
@@ -286,6 +335,30 @@
                   >
                     💡 Normalmente a cirurgia do outro olho
                   </small>
+                  <div class="surgery-map-fields">
+                    <div class="form-field">
+                      <label for="pEye2">Olho</label>
+                      <select id="pEye2" name="eye2">
+                        <option value="">Selecione</option>
+                        <option value="OD">OD</option>
+                        <option value="OE">OE</option>
+                        <option value="AO">AO</option>
+                      </select>
+                    </div>
+                    <div class="form-field">
+                      <label for="pQty2">Qt</label>
+                      <input id="pQty2" type="number" name="qty2" min="1" value="1" />
+                    </div>
+                    <div class="form-field">
+                      <label for="pLio2">LIO</label>
+                      <input
+                        id="pLio2"
+                        type="text"
+                        name="lio2"
+                        placeholder="Ex: ISERT +17.5"
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div class="form-field form-field--full">
                   <label for="pScheduledActivation"
@@ -478,6 +551,15 @@
             placeholder="67999915653"
             pattern="[0-9]+"
             required
+          />
+          <label for="editBirthDate">Data de nascimento:</label>
+          <input id="editBirthDate" type="date" />
+          <label for="editConvenio">Convênio:</label>
+          <input
+            id="editConvenio"
+            type="text"
+            list="convenioOptions"
+            placeholder="Ex: UNIMED, PARTICULAR..."
           />
           <label for="editStatus">Situação:</label>
           <select id="editStatus" required>

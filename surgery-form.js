@@ -82,6 +82,25 @@ export function addSurgeryDateToEditModal() {
     <small style="color: #888; font-size: 0.85rem; margin-top: 0.25rem; display: block;">
       💡 Normalmente a cirurgia de um olho (esta data calcula os lembretes)
     </small>
+    <div class="surgery-map-fields">
+      <div class="form-field">
+        <label for="editEye">Olho</label>
+        <select id="editEye" name="eye">
+          <option value="">Selecione</option>
+          <option value="OD">OD</option>
+          <option value="OE">OE</option>
+          <option value="AO">AO</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="editQty">Qt</label>
+        <input id="editQty" type="number" name="qty" min="1" value="1" />
+      </div>
+      <div class="form-field">
+        <label for="editLio">LIO</label>
+        <input id="editLio" type="text" name="lio" placeholder="Ex: EYHANCE +21.5" />
+      </div>
+    </div>
   `;
 
   // Criar o campo de data da cirurgia 2
@@ -100,6 +119,25 @@ export function addSurgeryDateToEditModal() {
     <small style="color: #888; font-size: 0.85rem; margin-top: 0.25rem; display: block;">
       💡 Normalmente a cirurgia do outro olho
     </small>
+    <div class="surgery-map-fields">
+      <div class="form-field">
+        <label for="editEye2">Olho</label>
+        <select id="editEye2" name="eye2">
+          <option value="">Selecione</option>
+          <option value="OD">OD</option>
+          <option value="OE">OE</option>
+          <option value="AO">AO</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="editQty2">Qt</label>
+        <input id="editQty2" type="number" name="qty2" min="1" value="1" />
+      </div>
+      <div class="form-field">
+        <label for="editLio2">LIO</label>
+        <input id="editLio2" type="text" name="lio2" placeholder="Ex: ISERT +17.5" />
+      </div>
+    </div>
   `;
 
   // Inserir após o campo de status
@@ -145,6 +183,21 @@ export function populateSurgeryDateInEditModal(patient) {
   const surgeryDate2Field = document.getElementById("editSurgeryDate2Field");
 
   if (!surgeryDateInput || !surgeryDateField) return;
+
+  // Preencher olho/qt/lio da primeira e segunda cirurgia
+  const editEye = document.getElementById("editEye");
+  const editQty = document.getElementById("editQty");
+  const editLio = document.getElementById("editLio");
+  const editEye2 = document.getElementById("editEye2");
+  const editQty2 = document.getElementById("editQty2");
+  const editLio2 = document.getElementById("editLio2");
+
+  if (editEye) editEye.value = patient.eye || "";
+  if (editQty) editQty.value = patient.qty || "1";
+  if (editLio) editLio.value = patient.lio || "";
+  if (editEye2) editEye2.value = patient.eye2 || "";
+  if (editQty2) editQty2.value = patient.qty2 || "1";
+  if (editLio2) editLio2.value = patient.lio2 || "";
 
   // Se o paciente tem data de cirurgia, preencher o campo
   if (patient.surgeryDate) {

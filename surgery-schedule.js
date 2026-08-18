@@ -4,6 +4,7 @@ import {
   gerarCartaoConfirmacao,
   downloadCartaoImage,
   copyCartaoToClipboard,
+  gerarImagemHtml,
 } from "./cartaoConfirmacao.js";
 
 /**
@@ -436,6 +437,14 @@ export function renderSurgerySchedule(filterDate = null) {
         <button class="btn-quick-filter" data-filter="month">Este Mês</button>
         <button class="btn-quick-filter" data-filter="all">Todas</button>
       </div>
+      <div class="surgery-map-actions">
+        <button id="printSurgeryMapBtn" class="btn-print-map" title="Imprimir mapa cirúrgico do dia filtrado">
+          <i class="fas fa-print"></i> Imprimir Mapa do Dia
+        </button>
+        <button id="sendSurgeryMapBtn" class="btn-whatsapp-map" title="Enviar mapa cirúrgico do dia por WhatsApp">
+          <i class="fab fa-whatsapp"></i> Enviar Mapa por WhatsApp
+        </button>
+      </div>
     </div>
   `;
 
@@ -575,6 +584,7 @@ export function renderSurgerySchedule(filterDate = null) {
     attachConfirmPresenceListeners();
     attachPendingReminderListeners();
     attachFilterListeners();
+    attachMapFieldListeners();
   } catch (error) {
     console.error("Erro ao renderizar agenda cirúrgica:", error);
     container.innerHTML = `
@@ -617,6 +627,12 @@ function renderSurgeryCard(patient, type) {
   const reminderInfo = calculateReminderDates(dateToDisplay);
   const surgeryDateInfo = formatDateWithWeekday(dateToDisplay);
   const surgeryTime = patient.surgeryTime || "07h15";
+
+  // Campos do mapa cirúrgico (olho/qt/lio) correspondentes a esta cirurgia
+  const { eye: mapEye, qty: mapQty, lio: mapLio } = getMapFieldsForCard(patient);
+  const eyeField = "eye" + fieldSuffix(patient);
+  const qtyField = "qty" + fieldSuffix(patient);
+  const lioField = "lio" + fieldSuffix(patient);
 
   // Verificação de segurança - verificar se os dados são válidos
   if (!reminderInfo || !surgeryDateInfo || !surgeryDateInfo.short) {
@@ -754,6 +770,29 @@ function renderSurgeryCard(patient, type) {
           <p><i class="fas fa-phone"></i> <strong>Telefone:</strong> ${patient.phone}</p>
           ${patient.doctor ? `<p><i class="fas fa-user-md"></i> <strong>Médico:</strong> ${patient.doctor}</p>` : ""}
         </div>
+        <div class="surgery-map-edit-fields">
+          <div class="surgery-map-edit-field">
+            <label><i class="fas fa-eye"></i> Olho</label>
+            <select class="surgery-eye-input" data-patient-id="${patient.id}" data-field="${eyeField}" title="Clique para editar o olho">
+              <option value="" ${!mapEye ? "selected" : ""}>-</option>
+              <option value="OD" ${mapEye === "OD" ? "selected" : ""}>OD</option>
+              <option value="OE" ${mapEye === "OE" ? "selected" : ""}>OE</option>
+              <option value="AO" ${mapEye === "AO" ? "selected" : ""}>AO</option>
+            </select>
+          </div>
+          <div class="surgery-map-edit-field">
+            <label><i class="fas fa-hashtag"></i> Qt</label>
+            <input type="number" min="1" class="surgery-qty-input" data-patient-id="${patient.id}" data-field="${qtyField}" value="${mapQty}" title="Clique para editar a quantidade" />
+          </div>
+          <div class="surgery-map-edit-field surgery-map-edit-field--wide">
+            <label><i class="fas fa-glasses"></i> LIO</label>
+            <input type="text" class="surgery-lio-input" data-patient-id="${patient.id}" data-field="${lioField}" value="${mapLio}" placeholder="Ex: ISERT +21.0" title="Clique para editar a LIO" />
+          </div>
+          <div class="surgery-map-edit-field surgery-map-edit-field--wide">
+            <label><i class="fas fa-file-medical"></i> Convênio</label>
+            <input type="text" class="surgery-convenio-input" data-patient-id="${patient.id}" data-field="convenio" value="${patient.convenio || ""}" list="convenioOptions" placeholder="Ex: UNIMED" title="Clique para editar o convênio" />
+          </div>
+        </div>
         ${wednesdayWarning}
         ${reminderStatus}
       </div>
@@ -853,6 +892,46 @@ function attachWhatsAppListeners() {
           if (typeof window.showToast === "function") {
             window.showToast("Erro ao atualizar horário", "error");
           }
+        }
+      }
+    });
+  });
+}
+
+/**
+ * Adiciona listeners para editar direto no card os campos do mapa cirúrgico
+ * (Olho, Qt, LIO e Convênio), gravando no campo correto (com sufixo "2"
+ * quando o card é da segunda cirurgia do paciente).
+ */
+function attachMapFieldListeners() {
+  const mapInputs = document.querySelectorAll(
+    ".surgery-eye-input, .surgery-qty-input, .surgery-lio-input, .surgery-convenio-input",
+  );
+
+  mapInputs.forEach((input) => {
+    input.addEventListener("change", async (e) => {
+      const patientId = e.target.dataset.patientId;
+      const field = e.target.dataset.field;
+      if (!patientId || !field) return;
+
+      const value = e.target.value.trim();
+
+      try {
+        await updatePatient(patientId, { [field]: value });
+
+        e.target.style.borderColor = "#10b981";
+        setTimeout(() => {
+          e.target.style.borderColor = "";
+        }, 1000);
+
+        if (typeof window.showToast === "function") {
+          window.showToast("Dado atualizado!", "success");
+        }
+      } catch (error) {
+        console.error("Erro ao atualizar campo do mapa cirúrgico:", error);
+        e.target.style.borderColor = "#ef4444";
+        if (typeof window.showToast === "function") {
+          window.showToast("Erro ao atualizar dado", "error");
         }
       }
     });
@@ -996,12 +1075,324 @@ function openCardPreviewModal(dataUrl, fileName, patient) {
 }
 
 /**
+ * Calcula a idade (em anos completos) a partir da data de nascimento (YYYY-MM-DD)
+ */
+function calculateAge(birthDateString) {
+  const birth = parseDateLocal(birthDateString);
+  if (!birth) return "";
+
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+/**
+ * Formata telefone (apenas dígitos) como (DD) 9XXXX-XXXX
+ */
+function formatPhoneDisplay(phone) {
+  const digits = (phone || "").replace(/\D/g, "");
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return phone || "";
+}
+
+/**
+ * Retorna olho/qt/lio correspondentes à cirurgia exibida no card
+ * (primeira ou segunda data, conforme _isSecondSurgery)
+ */
+function getMapFieldsForCard(patient) {
+  if (patient._isSecondSurgery) {
+    return {
+      eye: patient.eye2 || "",
+      qty: patient.qty2 || "1",
+      lio: patient.lio2 || "",
+    };
+  }
+  return {
+    eye: patient.eye || "",
+    qty: patient.qty || "1",
+    lio: patient.lio || "",
+  };
+}
+
+/**
+ * Reúne os pacientes do dia filtrado e pergunta o nome do(a) anestesista.
+ * Retorna null se não houver dados válidos ou o usuário cancelar o prompt.
+ */
+function prepareSurgeryMapData(dateString) {
+  if (!dateString) {
+    if (typeof window.showToast === "function") {
+      window.showToast(
+        "Selecione uma data no filtro para gerar o mapa do dia.",
+        "error",
+      );
+    } else {
+      alert("Selecione uma data no filtro para gerar o mapa do dia.");
+    }
+    return null;
+  }
+
+  const patientsOfDay = getSurgeryScheduledPatients()
+    .filter((p) => p._displayDate === dateString)
+    .sort((a, b) => (a.surgeryTime || "").localeCompare(b.surgeryTime || ""));
+
+  if (patientsOfDay.length === 0) {
+    if (typeof window.showToast === "function") {
+      window.showToast("Nenhuma cirurgia agendada para esta data.", "error");
+    } else {
+      alert("Nenhuma cirurgia agendada para esta data.");
+    }
+    return null;
+  }
+
+  const anestesista = prompt(
+    "Nome do(a) anestesista responsável pelo mapa:",
+    window.__lastAnestesista || "",
+  );
+  if (anestesista === null) return null; // Usuário cancelou
+
+  window.__lastAnestesista = anestesista;
+
+  return { dateString, patientsOfDay, anestesista };
+}
+
+/**
+ * Classe de densidade conforme a quantidade de cirurgias, para que o mapa
+ * sempre caiba em uma única página ao imprimir (reduz fonte/espaçamento
+ * gradualmente quando há muitas linhas).
+ */
+function densityClassForRowCount(count) {
+  if (count <= 10) return "map-density-normal";
+  if (count <= 16) return "map-density-compact";
+  if (count <= 22) return "map-density-tight";
+  return "map-density-ultra";
+}
+
+/**
+ * Monta o HTML do Mapa Cirúrgico (cabeçalho + tabela + rodapé com o
+ * anestesista), no formato usado hoje impresso para o centro cirúrgico.
+ */
+function buildSurgeryMapHtml({ dateString, patientsOfDay, anestesista }) {
+  const dateInfo = formatDateWithWeekday(dateString);
+  const densityClass = densityClassForRowCount(patientsOfDay.length);
+
+  const rows = patientsOfDay
+    .map((patient, index) => {
+      const { eye, qty, lio } = getMapFieldsForCard(patient);
+      const age = calculateAge(patient.birthDate);
+      const eyeClass = eye ? `map-eye-badge map-eye-${eye.toLowerCase()}` : "";
+      return `
+      <tr class="${index % 2 === 1 ? "map-row-alt" : ""}">
+        <td>${patient.doctor || ""}</td>
+        <td class="map-col-time">${(patient.surgeryTime || "").replace("h", ":")}</td>
+        <td class="map-col-name">${patient.name || ""}</td>
+        <td>${patient.birthDate ? formatDateWithWeekday(patient.birthDate).short : ""}</td>
+        <td>${age}</td>
+        <td>${patient.convenio || ""}</td>
+        <td>${patient.surgeryType || ""}</td>
+        <td>${eye ? `<span class="${eyeClass}">${eye}</span>` : ""}</td>
+        <td>${qty}</td>
+        <td class="map-col-lio">${lio || "-"}</td>
+        <td>${formatPhoneDisplay(patient.phone)}</td>
+      </tr>
+    `;
+    })
+    .join("");
+
+  return `
+    <div class="surgery-map-page ${densityClass}">
+      <div class="surgery-map-header">
+        <div class="surgery-map-brand">
+          <strong>Oftalmo 15</strong>
+          <span>Centro Oftalmológico</span>
+        </div>
+        <div class="surgery-map-title">
+          <span class="surgery-map-title-label">Mapa Cirúrgico</span>
+          <span class="surgery-map-title-date">${dateInfo.full}</span>
+        </div>
+      </div>
+      <div class="surgery-map-strip">CENTRO CIRÚRGICO OFTALMO 15</div>
+      <table class="surgery-map-table">
+        <thead>
+          <tr class="map-columns-row">
+            <th>Cirurgião</th>
+            <th>Horário</th>
+            <th>Paciente</th>
+            <th>Data de Nasc</th>
+            <th>Idade</th>
+            <th>Convênio</th>
+            <th>Cirurgia</th>
+            <th>Olho</th>
+            <th>Qt</th>
+            <th>LIO</th>
+            <th>Telefone</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+      <div class="surgery-map-footer">
+        <span class="surgery-map-footer-label">Anestesista responsável</span>
+        <span class="surgery-map-footer-value">${anestesista ? anestesista.toUpperCase() : "—"}</span>
+      </div>
+    </div>
+  `;
+}
+
+// Largura útil aproximada (em px, a 96dpi) de uma página A4 em paisagem
+// já descontando as margens de impressão definidas em @page.
+const MAP_PAGE_WIDTH_PX = 1040;
+// Altura útil aproximada da mesma página, com uma margem de segurança
+// para variações de impressora/tamanho de papel.
+const MAP_PAGE_MAX_HEIGHT_PX = 700;
+
+/**
+ * Mede a altura real do mapa já renderizado e, se ultrapassar o que cabe
+ * em uma página impressa, reduz o font-size base do mapa (que todo o
+ * miolo usa em unidades "em"/"%", então encolhe junto) até caber.
+ *
+ * Importante: usamos font-size, e não transform:scale(), porque o CSS
+ * transform é só um efeito visual de pintura — ele NÃO reduz a altura que
+ * o motor de paginação de impressão enxerga, então não evitaria páginas
+ * extras. Mudar o font-size realmente reflui o layout para um tamanho
+ * menor, que é o que precisamos para garantir uma única página.
+ */
+function fitSurgeryMapToPage(printArea) {
+  const page = printArea.querySelector(".surgery-map-page");
+  if (!page) return;
+
+  page.style.width = `${MAP_PAGE_WIDTH_PX}px`;
+  page.style.fontSize = "";
+
+  // Até 2 passadas: a 1ª chega perto do alvo, a 2ª corrige a imprecisão
+  // residual (bordas de 1px e outros valores fixos não encolhem com o
+  // font-size, então uma única passada pode ficar levemente acima do alvo).
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const actualHeight = page.offsetHeight;
+    if (actualHeight <= MAP_PAGE_MAX_HEIGHT_PX) break;
+
+    const currentFontSizePx = parseFloat(getComputedStyle(page).fontSize);
+    const scale = MAP_PAGE_MAX_HEIGHT_PX / actualHeight;
+    page.style.fontSize = `${currentFontSizePx * scale}px`;
+  }
+}
+
+/**
+ * Gera e imprime o Mapa Cirúrgico do dia filtrado, garantindo que caiba
+ * em uma única página.
+ */
+function printSurgeryMap(dateString) {
+  const data = prepareSurgeryMapData(dateString);
+  if (!data) return;
+
+  let printArea = document.getElementById("surgeryPrintArea");
+  if (!printArea) {
+    printArea = document.createElement("div");
+    printArea.id = "surgeryPrintArea";
+    document.body.appendChild(printArea);
+  }
+  printArea.innerHTML = buildSurgeryMapHtml(data);
+  fitSurgeryMapToPage(printArea);
+
+  window.print();
+}
+
+/**
+ * Gera o Mapa Cirúrgico como imagem, copia pra área de transferência e abre
+ * o WhatsApp Web para o usuário colar (Ctrl+V) na conversa/grupo desejado.
+ * Se o navegador não suportar copiar imagem, cai no fallback de download.
+ */
+async function sendSurgeryMapWhatsApp(dateString, button) {
+  const data = prepareSurgeryMapData(dateString);
+  if (!data) return;
+
+  const originalLabel = button ? button.innerHTML : null;
+  if (button) {
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
+  }
+
+  try {
+    const html = buildSurgeryMapHtml(data);
+    const { dataUrl, blob, fileName } = await gerarImagemHtml(html, {
+      width: 1300,
+      fileName: `mapa-cirurgico-${data.dateString}.png`,
+    });
+
+    try {
+      await copyCartaoToClipboard(blob);
+      window.open("https://web.whatsapp.com/", "_blank");
+      if (typeof window.showToast === "function") {
+        window.showToast(
+          "Imagem do mapa copiada! Cole (Ctrl+V) na conversa ou grupo desejado.",
+          "success",
+        );
+      } else {
+        alert(
+          "Imagem do mapa copiada! Cole (Ctrl+V) na conversa ou grupo desejado.",
+        );
+      }
+    } catch (clipboardError) {
+      console.warn(
+        "Não foi possível copiar automaticamente, caindo para download manual:",
+        clipboardError,
+      );
+      if (typeof window.showToast === "function") {
+        window.showToast(
+          "Não foi possível copiar automaticamente neste navegador. Baixe e anexe manualmente.",
+          "error",
+        );
+      }
+      openCardPreviewModal(dataUrl, fileName, null);
+    }
+  } catch (error) {
+    console.error("Erro ao gerar imagem do mapa cirúrgico:", error);
+    if (typeof window.showToast === "function") {
+      window.showToast(
+        error.message || "Erro ao gerar imagem do mapa cirúrgico",
+        "error",
+      );
+    } else {
+      alert(error.message || "Erro ao gerar imagem do mapa cirúrgico");
+    }
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.innerHTML = originalLabel;
+    }
+  }
+}
+
+/**
  * Adiciona listeners para os filtros de data
  */
 function attachFilterListeners() {
   const dateFilter = document.getElementById("surgeryDateFilter");
   const clearFilter = document.getElementById("clearDateFilter");
   const quickFilters = document.querySelectorAll(".btn-quick-filter");
+  const printMapBtn = document.getElementById("printSurgeryMapBtn");
+  const sendMapBtn = document.getElementById("sendSurgeryMapBtn");
+
+  if (printMapBtn) {
+    printMapBtn.addEventListener("click", () => {
+      printSurgeryMap(dateFilter ? dateFilter.value : "");
+    });
+  }
+
+  if (sendMapBtn) {
+    sendMapBtn.addEventListener("click", () => {
+      sendSurgeryMapWhatsApp(dateFilter ? dateFilter.value : "", sendMapBtn);
+    });
+  }
 
   if (dateFilter) {
     dateFilter.addEventListener("change", (e) => {
