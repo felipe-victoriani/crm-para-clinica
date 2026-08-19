@@ -64,6 +64,7 @@ const editDoctor = document.getElementById("editDoctor");
 const editPhone = document.getElementById("editPhone");
 const editBirthDate = document.getElementById("editBirthDate");
 const editConvenio = document.getElementById("editConvenio");
+const editSurgeryType = document.getElementById("editSurgeryType");
 const editStatus = document.getElementById("editStatus");
 const editNotes = document.getElementById("editNotes");
 const editScheduledActivation = document.getElementById(
@@ -636,6 +637,7 @@ window.editPatient = function (id) {
     if (editPhone) editPhone.value = patient.phone || "";
     if (editBirthDate) editBirthDate.value = patient.birthDate || "";
     if (editConvenio) editConvenio.value = patient.convenio || "";
+    if (editSurgeryType) editSurgeryType.value = patient.surgeryType || "";
     editStatus.value = patient.status;
     editNotes.value = patient.notes || "";
 
@@ -1132,6 +1134,7 @@ export function setupEventListeners() {
         phone: editPhone ? editPhone.value.replace(/\D/g, "") : undefined,
         birthDate: editBirthDate ? editBirthDate.value : undefined,
         convenio: editConvenio ? editConvenio.value : undefined,
+        surgeryType: editSurgeryType ? editSurgeryType.value : undefined,
         status: editStatus.value,
         notes: editNotes.value,
         scheduledActivationDate: scheduledActivationDate,

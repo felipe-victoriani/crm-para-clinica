@@ -3502,6 +3502,29 @@ body.login-page {
   box-shadow: 0 0 0 3px var(--brand-muted);
 }
 
+.surgery-type-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--text-color);
+  background: var(--card-bg);
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.surgery-type-input:hover {
+  border-color: var(--brand);
+}
+
+.surgery-type-input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-muted);
+}
+
 /* Campos editáveis do mapa cirúrgico (Olho, Qt, LIO, Convênio) no card */
 .surgery-map-edit-fields {
   display: grid;

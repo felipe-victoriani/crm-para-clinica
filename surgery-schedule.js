@@ -755,7 +755,19 @@ function renderSurgeryCard(patient, type) {
         <h4><i class="fas fa-user"></i> ${patient.name}</h4>
         ${secondSurgeryBadge}
         <div class="surgery-details">
-          <p><i class="fas fa-scissors"></i> <strong>Cirurgia:</strong> ${patient.surgeryType || "Não especificado"}</p>
+          <p class="editable-time-row">
+            <i class="fas fa-scissors"></i>
+            <strong>Cirurgia:</strong>
+            <input
+              type="text"
+              class="surgery-type-input"
+              data-patient-id="${patient.id}"
+              data-field="surgeryType"
+              value="${patient.surgeryType || ""}"
+              placeholder="Ex: Facectomia, Catarata..."
+              title="Clique para editar o tipo de cirurgia"
+            />
+          </p>
           <p class="editable-time-row">
             <i class="fas fa-clock"></i> 
             <strong>Horário:</strong> 
@@ -905,7 +917,7 @@ function attachWhatsAppListeners() {
  */
 function attachMapFieldListeners() {
   const mapInputs = document.querySelectorAll(
-    ".surgery-eye-input, .surgery-qty-input, .surgery-lio-input, .surgery-convenio-input",
+    ".surgery-eye-input, .surgery-qty-input, .surgery-lio-input, .surgery-convenio-input, .surgery-type-input",
   );
 
   mapInputs.forEach((input) => {
