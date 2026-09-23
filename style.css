@@ -3811,6 +3811,33 @@ body.login-page {
   background: #7c3aed;
 }
 
+.surgery-map-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4em;
+  padding: 0.4em 0.8em;
+  background: #f1f5f9;
+  color: #0f172a;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.78em;
+}
+
+.surgery-map-summary-total {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.surgery-map-summary-item {
+  font-weight: 600;
+}
+
+.surgery-map-summary-sep {
+  opacity: 0.5;
+}
+
 .surgery-map-footer {
   display: flex;
   align-items: center;

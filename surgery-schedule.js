@@ -1189,12 +1189,54 @@ function densityClassForRowCount(count) {
 }
 
 /**
- * Monta o HTML do Mapa Cirúrgico (cabeçalho + tabela + rodapé com o
- * anestesista), no formato usado hoje impresso para o centro cirúrgico.
+ * Agrupa as cirurgias do dia por tipo (campo de texto livre), normalizando
+ * por trim/lowercase para não separar "Catarata" de "catarata", mas
+ * exibindo o rótulo com a grafia mais usada entre as ocorrências.
+ */
+function summarizeSurgeryTypes(patientsOfDay) {
+  const groups = new Map();
+  patientsOfDay.forEach((patient) => {
+    const raw = (patient.surgeryType || "").trim();
+    const key = raw.toLowerCase() || "não informado";
+    if (!groups.has(key)) {
+      groups.set(key, { label: raw || "Não informado", count: 0, labelCounts: new Map() });
+    }
+    const group = groups.get(key);
+    group.count += 1;
+    const labelKey = raw || "Não informado";
+    group.labelCounts.set(labelKey, (group.labelCounts.get(labelKey) || 0) + 1);
+  });
+
+  return Array.from(groups.values())
+    .map((group) => {
+      let bestLabel = group.label;
+      let bestCount = 0;
+      group.labelCounts.forEach((count, label) => {
+        if (count > bestCount) {
+          bestCount = count;
+          bestLabel = label;
+        }
+      });
+      return { label: bestLabel, count: group.count };
+    })
+    .sort((a, b) => b.count - a.count);
+}
+
+/**
+ * Monta o HTML do Mapa Cirúrgico (cabeçalho + tabela + resumo do dia +
+ * rodapé com o anestesista), no formato usado hoje impresso para o
+ * centro cirúrgico.
  */
 function buildSurgeryMapHtml({ dateString, patientsOfDay, anestesista }) {
   const dateInfo = formatDateWithWeekday(dateString);
   const densityClass = densityClassForRowCount(patientsOfDay.length);
+  const typeSummary = summarizeSurgeryTypes(patientsOfDay);
+  const summaryItems = typeSummary
+    .map(
+      (item) =>
+        `<span class="surgery-map-summary-item">${item.count} ${item.label}</span>`,
+    )
+    .join('<span class="surgery-map-summary-sep">·</span>');
 
   const rows = patientsOfDay
     .map((patient, index) => {
@@ -1252,6 +1294,11 @@ function buildSurgeryMapHtml({ dateString, patientsOfDay, anestesista }) {
           ${rows}
         </tbody>
       </table>
+      <div class="surgery-map-summary">
+        <span class="surgery-map-summary-total">${patientsOfDay.length} procedimento${patientsOfDay.length === 1 ? "" : "s"} hoje</span>
+        <span class="surgery-map-summary-sep">—</span>
+        ${summaryItems}
+      </div>
       <div class="surgery-map-footer">
         <span class="surgery-map-footer-label">Anestesista responsável</span>
         <span class="surgery-map-footer-value">${anestesista ? anestesista.toUpperCase() : "—"}</span>
