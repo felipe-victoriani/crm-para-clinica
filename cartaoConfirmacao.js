@@ -1,5 +1,6 @@
 // cartaoConfirmacao.js - Geração do cartão visual de confirmação cirúrgica (PNG)
 import { CARTAO_TEMPLATE } from "./cartaoConfirmacao.template.js";
+import { escapeHtml } from "./utils.js";
 
 const HTML2CANVAS_URL =
   "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
@@ -36,12 +37,15 @@ function loadHtml2Canvas() {
  * Preenche os placeholders do template com os dados do paciente.
  */
 function fillTemplate(dados) {
-  return CARTAO_TEMPLATE.replace(/{{NOME_PACIENTE}}/g, dados.nome)
-    .replace(/{{DATA_CIRURGIA}}/g, dados.dataCirurgia)
-    .replace(/{{HORARIO_CIRURGIA}}/g, dados.horario)
+  // Valores escapados: o template vai para innerHTML.
+  // Função no replace evita que "$&" ou "$1" no nome sejam interpretados.
+  const value = (v) => () => escapeHtml(v);
+  return CARTAO_TEMPLATE.replace(/{{NOME_PACIENTE}}/g, value(dados.nome))
+    .replace(/{{DATA_CIRURGIA}}/g, value(dados.dataCirurgia))
+    .replace(/{{HORARIO_CIRURGIA}}/g, value(dados.horario))
     .replace(
       /{{NOME_CLINICA}}/g,
-      dados.nomeClinica || "Clínica Oftalmológica 15 de Novembro",
+      value(dados.nomeClinica || "Clínica Oftalmológica 15 de Novembro"),
     );
 }
 

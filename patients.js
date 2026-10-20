@@ -12,7 +12,10 @@ const DEBUG = false;
 // Médicos fixos
 export const doctors = ["Dr. Dante", "Dr. Alberto", "Dra. Fabiana"];
 
-// Situações
+// Responsáveis pelo acompanhamento (fonte única para todos os selects)
+export const responsibles = ["Felipe", "Gabi"];
+
+// Situações (valor gravado no banco — não alterar sem migrar os dados)
 export const statuses = [
   "Paciente solicitado risco",
   "Paciente agendou cirurgia",
@@ -20,6 +23,63 @@ export const statuses = [
   "Cirurgias Refrativas",
   "Paciente não quer operar",
 ];
+
+// Rótulo amigável exibido na interface para cada situação
+export const statusLabels = {
+  "Paciente solicitado risco": "Pedido de risco cirúrgico",
+  "Paciente agendou cirurgia": "Agendou cirurgia",
+  "Paciente fez cirurgia": "Pós-cirurgia",
+  "Cirurgias Refrativas": "Cirurgias Refrativas",
+  "Paciente não quer operar": "Não vai operar",
+};
+
+// Retorna o rótulo amigável de uma situação (ou o próprio valor, se desconhecido)
+export function statusLabel(status) {
+  return statusLabels[status] || status;
+}
+
+// Quantos dias após a visita a ativação acontece por padrão
+const DEFAULT_ACTIVATION_DAYS = 20;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Data base usada quando o paciente não tem ativação programada:
+ * a data da visita (meia-noite local) ou, na falta dela, o cadastro.
+ */
+function activationBaseDate(patient) {
+  if (patient.visitDate) {
+    const visit = new Date(`${patient.visitDate}T00:00:00`).getTime();
+    if (!isNaN(visit)) return visit;
+  }
+  return patient.createdAt || Date.now();
+}
+
+/** Data de ativação padrão (visita + 20 dias), em timestamp. */
+export function defaultActivationDate(patient) {
+  return activationBaseDate(patient) + DEFAULT_ACTIVATION_DAYS * DAY_MS;
+}
+
+// Situações que encerram o acompanhamento: não contam dias nem urgência
+export const CLOSED_STATUSES = [
+  "Paciente fez cirurgia",
+  "Paciente não quer operar",
+];
+
+/** true enquanto o paciente ainda está em acompanhamento (follow-up). */
+export function isFollowUpActive(patient) {
+  return !CLOSED_STATUSES.includes(patient.status);
+}
+
+/**
+ * Dias sem contato (desde o último contato, a visita ou o cadastro).
+ * Retorna null para acompanhamento encerrado — não entra em nenhuma contagem.
+ */
+export function daysWithoutContact(patient) {
+  if (!isFollowUpActive(patient)) return null;
+  return daysSince(
+    patient.lastContactAt || patient.visitDate || patient.createdAt,
+  );
+}
 
 // Estado dos pacientes
 let patients = [];
@@ -136,42 +196,22 @@ export function findDuplicatePatients(name, phone, excludeId = null) {
 export async function addPatient(patientData) {
   const now = Date.now();
 
-  // Se não foi definida data de ativação, usar padrão de 20 dias
+  // Se não foi definida data de ativação, usar padrão (visita + 20 dias)
   let scheduledActivationDate = patientData.scheduledActivationDate;
   if (!scheduledActivationDate || isNaN(scheduledActivationDate)) {
-    // Se há visitDate, usar ela como base; senão, usar createdAt
-    let baseDate = now;
-    if (patientData.visitDate) {
-      // Converter visitDate (string YYYY-MM-DD) para timestamp
-      const visitTimestamp = new Date(
-        patientData.visitDate + "T00:00:00",
-      ).getTime();
-      if (!isNaN(visitTimestamp)) {
-        baseDate = visitTimestamp;
-      }
-    }
-    // Padrão: 20 dias após a data base (visitDate ou createdAt)
-    scheduledActivationDate = baseDate + 20 * 24 * 60 * 60 * 1000;
+    scheduledActivationDate = defaultActivationDate({
+      visitDate: patientData.visitDate,
+      createdAt: now,
+    });
   }
 
-  console.log("addPatient - Dados recebidos:", patientData);
-  console.log(
-    "addPatient - Data de ativação final:",
-    new Date(scheduledActivationDate).toLocaleString("pt-BR"),
-  );
-
+  // Monta o registro final (sem logar dados do paciente — LGPD)
   const patient = {
     ...patientData,
     createdAt: now,
     lastContactAt: null,
-    scheduledActivationDate: scheduledActivationDate,
+    scheduledActivationDate,
   };
-
-  // Remover scheduledActivationDate se veio como null do patientData (evitar duplicação)
-  delete patient.scheduledActivationDate;
-  patient.scheduledActivationDate = scheduledActivationDate;
-
-  console.log("addPatient - Paciente final a ser salvo:", patient);
 
   try {
     if (isFirebaseConfigured) {
@@ -216,6 +256,15 @@ export async function removePatient(id) {
   }
 }
 
+/**
+ * Restaura um paciente excluído (botão "Desfazer"), recriando o registro
+ * no MESMO id para não quebrar referências.
+ */
+export async function restorePatient(patient) {
+  const { id, ...data } = patient;
+  await updatePatient(id, data);
+}
+
 // Calcular dias desde uma data
 export function daysSince(timestamp) {
   if (!timestamp) return 0; // Retornar 0 em vez de null
@@ -252,17 +301,21 @@ export function daysSince(timestamp) {
 
 // Calcular dias restantes até a ativação programada
 export function daysRemaining(patient) {
-  if (!patient.scheduledActivationDate) {
-    // Se não tem data de ativação, calcular padrão de 20 dias desde createdAt
-    const scheduledDate =
-      (patient.createdAt || Date.now()) + 20 * 24 * 60 * 60 * 1000;
-    const diff = scheduledDate - Date.now();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    return Math.max(0, days); // Não retornar negativo
-  }
+  // Acompanhamento encerrado (operou ou não vai operar): sem contagem
+  if (!isFollowUpActive(patient)) return null;
 
-  const diff = patient.scheduledActivationDate - Date.now();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  // Sem data programada: usar o padrão (visita + 20 dias), igual ao cadastro
+  const scheduledDate =
+    patient.scheduledActivationDate || defaultActivationDate(patient);
+
+  // Compara dias de calendário locais (meia-noite a meia-noite), sem
+  // depender da hora atual — evita mostrar 1 dia a menos durante o dia
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(scheduledDate);
+  target.setHours(0, 0, 0, 0);
+
+  const days = Math.round((target - today) / DAY_MS);
   return Math.max(0, days); // Não retornar negativo
 }
 
@@ -307,23 +360,19 @@ export function filterPatients(
     filtered = filtered.filter((p) => (p.responsible || "") === responsible);
   }
 
-  // Filtro de dias (mantido para compatibilidade com filtros existentes)
+  // Filtro "sem contato há X+ dias": só pacientes em acompanhamento
   if (minDays !== null) {
     filtered = filtered.filter((p) => {
-      const d = daysSince(p.lastContactAt || p.visitDate || p.createdAt);
-      return d >= minDays;
+      const d = daysWithoutContact(p);
+      return d !== null && d >= minDays;
     });
   }
 
-  // Ordenar por urgência (vermelho primeiro) - usando dias RESTANTES
-  filtered.sort((a, b) => {
-    const aDaysLeft = daysRemaining(a);
-    const bDaysLeft = daysRemaining(b);
-    const aUrg = getUrgency(aDaysLeft);
-    const bUrg = getUrgency(bDaysLeft);
-    const urgOrder = { vermelho: 4, laranja: 3, amarelo: 2, normal: 1 };
-    return urgOrder[bUrg] - urgOrder[aUrg];
-  });
+  // Ordenar por urgência (vermelho primeiro) - usando dias RESTANTES;
+  // acompanhamentos encerrados vão para o fim
+  const urgOrder = { vermelho: 4, laranja: 3, amarelo: 2, normal: 1 };
+  const rank = (p) => (isFollowUpActive(p) ? urgOrder[getUrgency(daysRemaining(p))] : 0);
+  filtered = [...filtered].sort((a, b) => rank(b) - rank(a));
 
   return filtered;
 }
@@ -334,15 +383,12 @@ export function getDashboardStats() {
   const byStatus = statuses.map(
     (status) => patients.filter((p) => p.status === status).length,
   );
-  const over30 = patients.filter(
-    (p) => daysSince(p.lastContactAt || p.visitDate || p.createdAt) >= 30,
-  ).length;
-  const over45 = patients.filter(
-    (p) => daysSince(p.lastContactAt || p.visitDate || p.createdAt) >= 45,
-  ).length;
-  const over60 = patients.filter(
-    (p) => daysSince(p.lastContactAt || p.visitDate || p.createdAt) >= 60,
-  ).length;
+  // Contagens de "sem contato" ignoram quem já operou ou não vai operar
+  const countOver = (min) =>
+    patients.filter((p) => (daysWithoutContact(p) ?? -1) >= min).length;
+  const over30 = countOver(30);
+  const over45 = countOver(45);
+  const over60 = countOver(60);
 
   // Pacientes novos no mês atual
   const now = new Date();
@@ -367,24 +413,21 @@ export function getDoctorStats() {
     const byStatus = statuses.map(
       (status) => doctorPatients.filter((p) => p.status === status).length,
     );
-    const over60 = doctorPatients.filter(
-      (p) => daysSince(p.lastContactAt || p.visitDate || p.createdAt) >= 60,
-    ).length;
+    // Só pacientes em acompanhamento entram nas métricas de tempo
+    const activePatients = doctorPatients.filter(isFollowUpActive);
+    const over60 = activePatients.filter((p) => daysWithoutContact(p) >= 60).length;
     const scheduled = doctorPatients.filter(
       (p) => p.status === "Paciente agendou cirurgia",
     ).length;
     const conversionRate =
       total > 0 ? ((scheduled / total) * 100).toFixed(1) : 0;
 
-    // Calcular média de tempo desde último contato
+    // Média de dias sem contato (só quem ainda está em acompanhamento)
     const avgDays =
-      total > 0
+      activePatients.length > 0
         ? Math.round(
-            doctorPatients.reduce(
-              (sum, p) =>
-                sum + daysSince(p.lastContactAt || p.visitDate || p.createdAt),
-              0,
-            ) / total,
+            activePatients.reduce((sum, p) => sum + daysWithoutContact(p), 0) /
+              activePatients.length,
           )
         : 0;
 
@@ -489,6 +532,9 @@ export function generateAdvancedReport(period = "month", doctorFilter = "all") {
   const declined = filteredPatients.filter(
     (p) => p.status === "Paciente não quer operar",
   ).length;
+  const refractive = filteredPatients.filter(
+    (p) => p.status === "Cirurgias Refrativas",
+  ).length;
 
   // Taxas
   const conversionRate = total > 0 ? ((scheduled / total) * 100).toFixed(1) : 0;
@@ -503,28 +549,26 @@ export function generateAdvancedReport(period = "month", doctorFilter = "all") {
   const thanked = filteredPatients.filter((p) => p.thankYouSentAt).length;
   const thankRate = total > 0 ? ((thanked / total) * 100).toFixed(1) : 0;
 
-  // Pacientes críticos (60+ dias)
-  const critical = filteredPatients.filter((p) => {
-    const baseTs = p.lastContactAt || p.visitDate || p.createdAt;
-    const days = Math.floor((now - new Date(baseTs)) / (1000 * 60 * 60 * 24));
-    return days >= 60;
-  }).length;
+  // Métricas de tempo só consideram quem ainda está em acompanhamento
+  const activeDays = filteredPatients
+    .filter(isFollowUpActive)
+    .map(daysWithoutContact);
 
-  // Tempo médio
-  let totalDays = 0;
-  filteredPatients.forEach((p) => {
-    const baseTs = p.lastContactAt || p.visitDate || p.createdAt;
-    const days = Math.floor((now - new Date(baseTs)) / (1000 * 60 * 60 * 24));
-    totalDays += days;
-  });
-  const avgDays = total > 0 ? Math.round(totalDays / total) : 0;
+  // Pacientes críticos (60+ dias sem contato)
+  const critical = activeDays.filter((d) => d >= 60).length;
 
-  // Distribuição por status
+  // Tempo médio sem contato
+  const avgDays = activeDays.length
+    ? Math.round(activeDays.reduce((sum, d) => sum + d, 0) / activeDays.length)
+    : 0;
+
+  // Distribuição por status (mesmos rótulos usados no resto da interface)
   const statusDistribution = [
-    { status: "Solicitado Risco", count: requested, color: "green" },
-    { status: "Agendou Cirurgia", count: scheduled, color: "blue" },
-    { status: "Fez Cirurgia", count: completed, color: "gray" },
-    { status: "Não Quer Operar", count: declined, color: "red" },
+    { status: statusLabel("Paciente solicitado risco"), count: requested, color: "green" },
+    { status: statusLabel("Paciente agendou cirurgia"), count: scheduled, color: "blue" },
+    { status: statusLabel("Paciente fez cirurgia"), count: completed, color: "gray" },
+    { status: statusLabel("Cirurgias Refrativas"), count: refractive, color: "purple" },
+    { status: statusLabel("Paciente não quer operar"), count: declined, color: "red" },
   ];
 
   // Relatório por médico
@@ -597,10 +641,10 @@ export function generateAdvancedReport(period = "month", doctorFilter = "all") {
 
 function getPeriodLabel(period) {
   const labels = {
-    week: "Última Semana",
-    month: "Último Mês",
-    quarter: "Último Trimestre",
-    year: "Último Ano",
+    week: "Últimos 7 dias",
+    month: "Últimos 30 dias",
+    quarter: "Últimos 3 meses",
+    year: "Últimos 12 meses",
     all: "Todo o Período",
   };
   return labels[period] || "Período Personalizado";

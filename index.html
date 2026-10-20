@@ -6,6 +6,8 @@
     <title>CRM Clínico — Oftalmo 15</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="theme-color" content="#111827" />
+    <!-- Aplica o tema salvo antes da pintura (evita piscar claro no tema escuro) -->
+    <script src="theme-init.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -20,58 +22,68 @@
   </head>
   <body>
     <!-- Indicador de carregamento -->
-    <div id="loadingOverlay" class="loading-overlay">
+    <div id="loadingOverlay" class="loading-overlay" role="status" aria-live="polite">
       <div class="loading-spinner">
-        <i class="fas fa-spinner fa-spin"></i>
+        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
         <p>Carregando...</p>
       </div>
     </div>
 
     <header>
-      <button id="menuToggle" class="menu-toggle" title="Menu">
-        <i class="fas fa-bars"></i>
+      <button
+        id="menuToggle"
+        class="menu-toggle"
+        type="button"
+        aria-label="Abrir menu"
+        aria-controls="sidebar"
+        aria-expanded="false"
+      >
+        <i class="fas fa-bars" aria-hidden="true"></i>
       </button>
-      <h1>CRM Oftalmo 15</h1>
+      <h1 class="brand"><a href="#dashboard">CRM Oftalmo 15</a></h1>
+      <!-- Busca global: leva direto à lista de pacientes filtrada -->
+      <div class="header-search" role="search">
+        <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+        <label for="globalSearch" class="sr-only">Buscar paciente</label>
+        <input id="globalSearch" type="search" placeholder="Buscar paciente" autocomplete="off" />
+        <kbd aria-hidden="true">/</kbd>
+      </div>
       <div class="header-controls">
-        <button id="themeToggle" title="Alternar Tema">
-          <i class="fas fa-moon"></i>
+        <button id="themeToggle" type="button" aria-label="Alternar tema claro/escuro">
+          <i class="fas fa-moon" aria-hidden="true"></i>
         </button>
-        <button id="logoutBtn">Logout</button>
+        <button id="logoutBtn" type="button">
+          <i class="fas fa-arrow-right-from-bracket" aria-hidden="true"></i> Sair
+        </button>
       </div>
     </header>
 
     <div class="container">
-      <nav class="sidebar">
+      <nav id="sidebar" class="sidebar" aria-label="Menu principal">
         <ul>
           <li>
-            <a
-              href="#dashboard"
-              class="nav-link active"
-              data-section="dashboard"
-              ><i class="fas fa-tachometer-alt"></i> Dashboard</a
+            <a href="#dashboard" class="nav-link active" data-section="dashboard"
+              ><i class="fas fa-tachometer-alt" aria-hidden="true"></i> Dashboard</a
             >
           </li>
           <li>
             <a href="#patients" class="nav-link" data-section="patients"
-              ><i class="fas fa-users"></i> Pacientes</a
+              ><i class="fas fa-users" aria-hidden="true"></i> Pacientes</a
             >
           </li>
           <li>
             <a href="#reports" class="nav-link" data-section="reports"
-              ><i class="fas fa-chart-bar"></i> Relatórios</a
+              ><i class="fas fa-chart-bar" aria-hidden="true"></i> Relatórios</a
             >
           </li>
           <li>
-            <a
-              href="#surgery-schedule"
-              class="nav-link"
-              data-section="surgery-schedule"
-              ><i class="fas fa-calendar-plus"></i> Agenda Cirúrgica</a
+            <a href="#surgery-schedule" class="nav-link" data-section="surgery-schedule"
+              ><i class="fas fa-calendar-plus" aria-hidden="true"></i> Agenda Cirúrgica</a
             >
           </li>
           <li>
             <a href="#settings" class="nav-link" data-section="settings"
-              ><i class="fas fa-cog"></i> Configurações</a
+              ><i class="fas fa-cog" aria-hidden="true"></i> Configurações</a
             >
           </li>
           <li>
@@ -80,7 +92,7 @@
               target="_blank"
               rel="noopener noreferrer"
               class="nav-link external-link"
-              ><i class="fas fa-external-link-alt"></i> Sistema Oftalmo 15</a
+              ><i class="fas fa-external-link-alt" aria-hidden="true"></i> Sistema Oftalmo 15</a
             >
           </li>
           <li>
@@ -89,89 +101,42 @@
               target="_blank"
               rel="noopener noreferrer"
               class="nav-link external-link"
-              ><i class="fas fa-external-link-alt"></i> Faturamento</a
+              ><i class="fas fa-external-link-alt" aria-hidden="true"></i> Faturamento</a
             >
           </li>
         </ul>
       </nav>
 
       <main class="main-content">
-        <section id="dashboard-section" class="section active">
-          <h2>Dashboard</h2>
+        <section id="dashboard-section" class="section active" aria-labelledby="dashboardTitle">
+          <h2 id="dashboardTitle"><i class="fas fa-tachometer-alt" aria-hidden="true"></i> Dashboard</h2>
           <div id="dashboard" class="dashboard">
             <!-- Dashboard será renderizado aqui -->
           </div>
         </section>
 
-        <section id="patients-section" class="section">
+        <section id="patients-section" class="section" aria-labelledby="patientsTitle">
           <div class="section-header">
-            <h2>
-              Gestão de Pacientes
+            <h2 id="patientsTitle">
+              <i class="fas fa-users" aria-hidden="true"></i> Pacientes
               <span id="patientsCounter" class="section-counter"></span>
             </h2>
-            <div class="view-controls">
-              <div class="sort-control">
-                <label><i class="fas fa-sort"></i></label>
-                <select id="sortSelect">
-                  <option value="urgency">Urgência</option>
-                  <option value="name">Nome (A-Z)</option>
-                  <option value="recent">Mais recentes</option>
-                  <option value="oldest">Mais antigos</option>
-                  <option value="doctor">Médico</option>
-                </select>
-              </div>
-              <div class="view-toggle">
-                <button
-                  id="viewGrid"
-                  class="view-btn active"
-                  title="Visualização em grade"
-                >
-                  <i class="fas fa-th"></i>
-                </button>
-                <button
-                  id="viewList"
-                  class="view-btn"
-                  title="Visualização em lista"
-                >
-                  <i class="fas fa-list"></i>
-                </button>
-              </div>
-            </div>
           </div>
           <div class="patients-container">
-            <div class="form-section">
-              <div class="form-header">
-                <h3>
-                  <i class="fas fa-user-plus"></i> Cadastrar Novo Paciente
-                </h3>
-                <button
-                  type="button"
-                  id="resetForm"
-                  class="btn-reset"
-                  title="Limpar formulário"
-                >
-                  <i class="fas fa-redo"></i> Limpar
-                </button>
-              </div>
+            <!-- Cadastro recolhível: a lista (tarefa diária) fica visível sem rolar -->
+            <details id="newPatientPanel" class="form-section">
+              <summary class="form-summary">
+                <span><i class="fas fa-user-plus" aria-hidden="true"></i> Cadastrar novo paciente</span>
+                <i class="fas fa-chevron-down form-summary-chevron" aria-hidden="true"></i>
+              </summary>
               <form id="patientForm">
                 <div class="form-field">
                   <label for="pName">Nome do paciente</label>
-                  <input
-                    id="pName"
-                    type="text"
-                    name="name"
-                    placeholder="Nome completo"
-                    required
-                  />
+                  <input id="pName" type="text" name="name" placeholder="Nome completo" autocomplete="off" required />
                 </div>
                 <div class="form-field">
                   <label for="pVisitDate">Data da visita</label>
-                  <input
-                    id="pVisitDate"
-                    type="date"
-                    name="visitDate"
-                    required
-                  />
+                  <input id="pVisitDate" type="date" name="visitDate" required />
                 </div>
                 <div class="form-field">
                   <label for="pBirthDate">Data de nascimento</label>
@@ -200,19 +165,14 @@
                 </div>
                 <div class="form-field">
                   <label for="pDoctor">Médico</label>
-                  <select id="pDoctor" name="doctor" required>
+                  <select id="pDoctor" name="doctor" data-options="doctors" required>
                     <option value="">Selecione o médico</option>
-                    <option value="Dr. Dante">Dr. Dante</option>
-                    <option value="Dr. Alberto">Dr. Alberto</option>
-                    <option value="Dra. Fabiana">Dra. Fabiana</option>
                   </select>
                 </div>
                 <div class="form-field">
                   <label for="pResponsible">Responsável</label>
-                  <select id="pResponsible" name="responsible" required>
+                  <select id="pResponsible" name="responsible" data-options="responsibles" required>
                     <option value="">Selecione o responsável</option>
-                    <option value="Felipe">Felipe</option>
-                    <option value="Gabi">Gabi</option>
                   </select>
                 </div>
                 <div class="form-field">
@@ -231,60 +191,29 @@
                     id="pPhone"
                     type="tel"
                     name="phone"
+                    inputmode="numeric"
                     placeholder="67999915653"
                     pattern="[0-9]+"
+                    title="Somente números, com DDD"
                     required
                   />
                 </div>
                 <div class="form-field form-field--full">
                   <label for="pNotes">Observações</label>
-                  <textarea
-                    id="pNotes"
-                    name="notes"
-                    placeholder="Observações sobre o paciente..."
-                  ></textarea>
+                  <textarea id="pNotes" name="notes" placeholder="Observações sobre o paciente..."></textarea>
                 </div>
                 <div class="form-field form-field--full">
                   <label for="pStatus">Situação</label>
-                  <select id="pStatus" name="status" required>
+                  <select id="pStatus" name="status" data-options="statuses" required>
                     <option value="">Selecione a situação</option>
-                    <option value="Paciente solicitado risco">
-                      Pedido de risco cirúrgico
-                    </option>
-                    <option value="Paciente agendou cirurgia">
-                      Agendou cirurgia
-                    </option>
-                    <option value="Paciente fez cirurgia">Pós-cirurgia</option>
-                    <option value="Cirurgias Refrativas">
-                      Cirurgias Refrativas
-                    </option>
-                    <option value="Paciente não quer operar">
-                      Não vai operar
-                    </option>
                   </select>
                 </div>
-                <div
-                  class="form-field form-field--full"
-                  id="surgeryDateField"
-                  style="display: none"
-                >
-                  <label for="pSurgeryDate">Data da Primeira Cirurgia</label>
-                  <input
-                    id="pSurgeryDate"
-                    type="date"
-                    name="surgeryDate"
-                    placeholder="Data agendada para a cirurgia"
-                  />
-                  <small
-                    style="
-                      color: #888;
-                      font-size: 0.85rem;
-                      margin-top: 0.25rem;
-                      display: block;
-                    "
-                  >
-                    💡 Normalmente a cirurgia de um olho (esta data calcula os
-                    lembretes)
+                <div class="form-field form-field--full" id="surgeryDateField" hidden>
+                  <label for="pSurgeryDate">Data da primeira cirurgia</label>
+                  <input id="pSurgeryDate" type="date" name="surgeryDate" aria-describedby="pSurgeryDateHint" />
+                  <small id="pSurgeryDateHint" class="field-hint">
+                    <i class="fas fa-circle-info" aria-hidden="true"></i>
+                    Normalmente a cirurgia de um olho (esta data calcula os lembretes)
                   </small>
                   <div class="surgery-map-fields">
                     <div class="form-field">
@@ -302,38 +231,16 @@
                     </div>
                     <div class="form-field">
                       <label for="pLio">LIO</label>
-                      <input
-                        id="pLio"
-                        type="text"
-                        name="lio"
-                        placeholder="Ex: EYHANCE +21.5"
-                      />
+                      <input id="pLio" type="text" name="lio" placeholder="Ex: EYHANCE +21.5" />
                     </div>
                   </div>
                 </div>
-                <div
-                  class="form-field form-field--full"
-                  id="surgeryDate2Field"
-                  style="display: none"
-                >
-                  <label for="pSurgeryDate2"
-                    >Data da Segunda Cirurgia (Opcional)</label
-                  >
-                  <input
-                    id="pSurgeryDate2"
-                    type="date"
-                    name="surgeryDate2"
-                    placeholder="Segunda data da cirurgia"
-                  />
-                  <small
-                    style="
-                      color: #888;
-                      font-size: 0.85rem;
-                      margin-top: 0.25rem;
-                      display: block;
-                    "
-                  >
-                    💡 Normalmente a cirurgia do outro olho
+                <div class="form-field form-field--full" id="surgeryDate2Field" hidden>
+                  <label for="pSurgeryDate2">Data da segunda cirurgia (opcional)</label>
+                  <input id="pSurgeryDate2" type="date" name="surgeryDate2" aria-describedby="pSurgeryDate2Hint" />
+                  <small id="pSurgeryDate2Hint" class="field-hint">
+                    <i class="fas fa-circle-info" aria-hidden="true"></i>
+                    Normalmente a cirurgia do outro olho
                   </small>
                   <div class="surgery-map-fields">
                     <div class="form-field">
@@ -351,88 +258,113 @@
                     </div>
                     <div class="form-field">
                       <label for="pLio2">LIO</label>
-                      <input
-                        id="pLio2"
-                        type="text"
-                        name="lio2"
-                        placeholder="Ex: ISERT +17.5"
-                      />
+                      <input id="pLio2" type="text" name="lio2" placeholder="Ex: ISERT +17.5" />
                     </div>
                   </div>
                 </div>
                 <div class="form-field form-field--full">
-                  <label for="pScheduledActivation"
-                    >Data de ativação programada (opcional)</label
-                  >
+                  <label for="pScheduledActivation">Data de ativação programada (opcional)</label>
                   <input
                     id="pScheduledActivation"
                     type="date"
                     name="scheduledActivation"
-                    placeholder="Deixe vazio para usar padrão de 20 dias"
+                    aria-describedby="pScheduledActivationHint"
                   />
-                  <small
-                    style="
-                      color: #888;
-                      font-size: 0.85rem;
-                      margin-top: 0.25rem;
-                      display: block;
-                    "
-                  >
-                    💡 Deixe em branco para calcular 20 dias a partir da
-                    <strong>Data da visita</strong>
+                  <small id="pScheduledActivationHint" class="field-hint">
+                    <i class="fas fa-circle-info" aria-hidden="true"></i>
+                    Deixe em branco para calcular 20 dias a partir da <strong>data da visita</strong>
                   </small>
                 </div>
-                <button type="submit">
-                  <i class="fas fa-user-plus"></i> Cadastrar
-                </button>
+                <div class="form-actions form-field--full">
+                  <button type="reset" id="resetForm" class="btn-reset">
+                    <i class="fas fa-redo" aria-hidden="true"></i> Limpar
+                  </button>
+                  <button type="submit" class="btn-submit">
+                    <i class="fas fa-user-plus" aria-hidden="true"></i> Cadastrar
+                  </button>
+                </div>
               </form>
+            </details>
+
+            <!-- Barra da lista: busca em destaque, filtros recolhidos, ordenação e modo -->
+            <div class="patients-toolbar">
+              <div class="search-field" role="search">
+                <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+                <label for="searchInput" class="sr-only">Buscar por nome</label>
+                <input type="search" id="searchInput" placeholder="Buscar por nome" autocomplete="off" />
+              </div>
+              <button
+                id="filtersToggle"
+                type="button"
+                class="btn-ghost filters-toggle"
+                aria-expanded="false"
+                aria-controls="filtersPanel"
+              >
+                <i class="fas fa-sliders" aria-hidden="true"></i> Filtros
+                <span id="filtersCount" class="filters-count" hidden></span>
+              </button>
+              <div class="sort-control">
+                <label for="sortSelect"
+                  ><i class="fas fa-arrow-down-wide-short" aria-hidden="true"></i
+                  ><span class="sr-only">Ordenar por</span></label
+                >
+                <select id="sortSelect">
+                  <option value="urgency">Urgência</option>
+                  <option value="name">Nome (A-Z)</option>
+                  <option value="recent">Mais recentes</option>
+                  <option value="oldest">Mais antigos</option>
+                  <option value="doctor">Médico</option>
+                </select>
+              </div>
+              <div class="view-toggle" role="group" aria-label="Modo de visualização">
+                <button
+                  id="viewGrid"
+                  type="button"
+                  class="view-btn active"
+                  aria-label="Visualização em grade"
+                  aria-pressed="true"
+                >
+                  <i class="fas fa-th" aria-hidden="true"></i>
+                </button>
+                <button
+                  id="viewList"
+                  type="button"
+                  class="view-btn"
+                  aria-label="Visualização em lista"
+                  aria-pressed="false"
+                >
+                  <i class="fas fa-list" aria-hidden="true"></i>
+                </button>
+              </div>
             </div>
 
-            <div class="filters">
-              <input
-                type="text"
-                id="searchInput"
-                placeholder="Buscar por nome"
-              />
-              <select id="doctorFilter">
+            <div id="filtersPanel" class="filters" aria-label="Filtros da lista" hidden>
+              <label for="doctorFilter" class="sr-only">Médico</label>
+              <select id="doctorFilter" data-options="doctors">
                 <option value="">Todos os médicos</option>
-                <option value="Dr. Dante">Dr. Dante</option>
-                <option value="Dr. Alberto">Dr. Alberto</option>
-                <option value="Dra. Fabiana">Dra. Fabiana</option>
               </select>
-              <select id="responsibleFilter">
+              <label for="responsibleFilter" class="sr-only">Responsável</label>
+              <select id="responsibleFilter" data-options="responsibles">
                 <option value="">Todos os responsáveis</option>
-                <option value="Felipe">Felipe</option>
-                <option value="Gabi">Gabi</option>
               </select>
-              <select id="statusFilter">
-                <option value="">Todos os status</option>
-                <option value="Paciente solicitado risco">
-                  Pedido de risco cirúrgico
-                </option>
-                <option value="Paciente agendou cirurgia">
-                  Agendou cirurgia
-                </option>
-                <option value="Paciente fez cirurgia">Pós-cirurgia</option>
-                <option value="Cirurgias Refrativas">
-                  Cirurgias Refrativas
-                </option>
-                <option value="Paciente não quer operar">Não vai operar</option>
+              <label for="statusFilter" class="sr-only">Situação</label>
+              <select id="statusFilter" data-options="statuses">
+                <option value="">Todas as situações</option>
               </select>
+              <label for="daysFilter" class="sr-only">Tempo sem contato</label>
               <select id="daysFilter">
-                <option value="">Todos os dias</option>
-                <option value="30">30+ dias</option>
-                <option value="45">45+ dias</option>
-                <option value="60">60+ dias</option>
+                <option value="">Qualquer tempo sem contato</option>
+                <option value="30">Sem contato há 30+ dias</option>
+                <option value="45">Sem contato há 45+ dias</option>
+                <option value="60">Sem contato há 60+ dias</option>
               </select>
-              <button
-                id="clearFilters"
-                class="clear-filters-btn"
-                title="Limpar todos os filtros"
-              >
-                <i class="fas fa-times-circle"></i> Limpar Filtros
+              <button id="clearFilters" type="button" class="clear-filters-btn">
+                <i class="fas fa-times-circle" aria-hidden="true"></i> Limpar filtros
               </button>
             </div>
+
+            <!-- Chips dos filtros ativos (renderizados via JS) -->
+            <div id="activeFilters" class="active-filters" aria-live="polite" hidden></div>
 
             <div id="patientsList" class="patients-list">
               <!-- Lista de pacientes será renderizada aqui -->
@@ -440,10 +372,10 @@
           </div>
         </section>
 
-        <section id="surgery-schedule-section" class="section">
+        <section id="surgery-schedule-section" class="section" aria-labelledby="surgeryTitle">
           <div class="section-header">
-            <h2>
-              <i class="fas fa-calendar-plus"></i> Agenda Cirúrgica
+            <h2 id="surgeryTitle">
+              <i class="fas fa-calendar-plus" aria-hidden="true"></i> Agenda Cirúrgica
               <span id="surgeryCounter" class="section-counter"></span>
             </h2>
           </div>
@@ -452,187 +384,155 @@
           </div>
         </section>
 
-        <section id="reports-section" class="section">
-          <h2>Relatórios</h2>
+        <section id="reports-section" class="section" aria-labelledby="reportsTitle">
+          <h2 id="reportsTitle"><i class="fas fa-chart-bar" aria-hidden="true"></i> Relatórios</h2>
 
           <div class="report-filters">
             <div class="filter-group">
-              <label>Período:</label>
+              <label for="reportPeriod">Período:</label>
               <select id="reportPeriod">
-                <option value="week">Esta Semana</option>
-                <option value="month" selected>Este Mês</option>
-                <option value="quarter">Este Trimestre</option>
-                <option value="year">Este Ano</option>
-                <option value="all">Todo o Período</option>
+                <option value="week">Últimos 7 dias</option>
+                <option value="month" selected>Últimos 30 dias</option>
+                <option value="quarter">Últimos 3 meses</option>
+                <option value="year">Últimos 12 meses</option>
+                <option value="all">Todo o período</option>
               </select>
             </div>
             <div class="filter-group">
-              <label>Médico:</label>
+              <label for="reportDoctor">Médico:</label>
               <select id="reportDoctor">
                 <option value="all">Todos</option>
               </select>
             </div>
-            <button id="generateReport" class="btn-primary">
-              <i class="fas fa-chart-line"></i> Gerar Relatório
+            <button id="generateReport" type="button" class="btn-primary">
+              <i class="fas fa-chart-line" aria-hidden="true"></i> Gerar relatório
             </button>
-            <button id="exportReport" class="btn-secondary">
-              <i class="fas fa-file-excel"></i> Exportar CSV
+            <button id="exportReport" type="button" class="btn-secondary">
+              <i class="fas fa-file-excel" aria-hidden="true"></i> Exportar CSV
             </button>
           </div>
 
           <div id="reportSection" class="report">
             <div class="report-placeholder">
-              <i class="fas fa-chart-bar"></i>
-              <p>Selecione os filtros e clique em "Gerar Relatório"</p>
+              <i class="fas fa-chart-bar" aria-hidden="true"></i>
+              <p>Selecione os filtros e clique em "Gerar relatório"</p>
             </div>
           </div>
         </section>
 
-        <section id="settings-section" class="section">
-          <h2>Configurações</h2>
+        <section id="settings-section" class="section" aria-labelledby="settingsTitle">
+          <h2 id="settingsTitle"><i class="fas fa-cog" aria-hidden="true"></i> Configurações</h2>
           <div class="settings">
             <form id="settingsForm">
               <div class="settings-row">
                 <label for="countryCode">Código do país (WhatsApp):</label>
-                <input
-                  id="countryCode"
-                  type="text"
-                  value="55"
-                  pattern="[0-9]+"
-                />
+                <input id="countryCode" type="text" inputmode="numeric" value="55" pattern="[0-9]+" />
               </div>
               <div class="settings-row">
                 <label for="areaCode">DDD (opcional):</label>
-                <input
-                  id="areaCode"
-                  type="text"
-                  value="67"
-                  placeholder="Ex: 67"
-                  pattern="[0-9]*"
-                />
+                <input id="areaCode" type="text" inputmode="numeric" value="67" placeholder="Ex: 67" pattern="[0-9]*" />
               </div>
-              <button type="submit">Salvar Configurações</button>
+              <button type="submit">Salvar configurações</button>
               <p class="hint">
                 Mensagens serão enviadas via WhatsApp Web (QR). Se não estiver
                 logado, o WhatsApp Web solicitará o QR automaticamente.
               </p>
             </form>
           </div>
-          <div class="modal-actions">
-            <button type="submit">Salvar Alterações</button>
-          </div>
         </section>
       </main>
     </div>
 
-    <!-- Modal de Edição -->
-    <div id="editModal" class="modal">
-      <div class="modal-content">
-        <span class="close"><i class="fas fa-xmark"></i></span>
-        <h2>Editar Paciente</h2>
-        <form id="editForm">
-          <label for="editResponsible">Responsável:</label>
-          <select id="editResponsible" required>
-            <option value="">Selecione</option>
-            <option value="Felipe">Felipe</option>
-            <option value="Gabi">Gabi</option>
-          </select>
-          <label for="editDoctor">Médico:</label>
-          <select id="editDoctor" required>
-            <option value="">Selecione o médico</option>
-            <option value="Dr. Dante">Dr. Dante</option>
-            <option value="Dr. Alberto">Dr. Alberto</option>
-            <option value="Dra. Fabiana">Dra. Fabiana</option>
-          </select>
-          <label for="editPhone">Telefone:</label>
-          <input
-            id="editPhone"
-            type="tel"
-            placeholder="67999915653"
-            pattern="[0-9]+"
-            required
-          />
-          <label for="editBirthDate">Data de nascimento:</label>
-          <input id="editBirthDate" type="date" />
-          <label for="editConvenio">Convênio:</label>
-          <input
-            id="editConvenio"
-            type="text"
-            list="convenioOptions"
-            placeholder="Ex: UNIMED, PARTICULAR..."
-          />
-          <label for="editSurgeryType">Tipo de cirurgia:</label>
-          <input
-            id="editSurgeryType"
-            type="text"
-            placeholder="Ex: Facectomia, Catarata..."
-          />
-          <label for="editStatus">Situação:</label>
-          <select id="editStatus" required>
-            <option value="Paciente solicitado risco">
-              Pedido de risco cirúrgico
-            </option>
-            <option value="Paciente agendou cirurgia">Agendou cirurgia</option>
-            <option value="Paciente fez cirurgia">Pós-cirurgia</option>
-            <option value="Cirurgias Refrativas">Cirurgias Refrativas</option>
-            <option value="Paciente não quer operar">Não vai operar</option>
-          </select>
-          <label for="editScheduledActivation"
-            >Data de ativação programada:</label
-          >
-          <input
-            id="editScheduledActivation"
-            type="date"
-            placeholder="Data de ativação"
-          />
-          <small
-            style="
-              color: #888;
-              font-size: 0.85rem;
-              margin-top: 0.25rem;
-              display: block;
-            "
-          >
-            💡 Ajuste a data para alterar a contagem regressiva
-          </small>
-          <label for="editNotes">Observações (editar ou adicionar):</label>
-          <textarea
-            id="editNotes"
-            placeholder="Observações sobre o paciente..."
-          ></textarea>
-          <button type="submit">Salvar Alterações</button>
-        </form>
-      </div>
-    </div>
+    <!-- Modal de edição (dialog nativo: foco preso e Esc fecham sozinhos) -->
+    <dialog id="editModal" class="modal-content" aria-labelledby="editModalTitle">
+      <button type="button" class="close" data-close aria-label="Fechar">
+        <i class="fas fa-xmark" aria-hidden="true"></i>
+      </button>
+      <h2 id="editModalTitle">Editar paciente</h2>
+      <form id="editForm">
+        <label for="editResponsible">Responsável:</label>
+        <select id="editResponsible" data-options="responsibles" required>
+          <option value="">Selecione</option>
+        </select>
+        <label for="editDoctor">Médico:</label>
+        <select id="editDoctor" data-options="doctors" required>
+          <option value="">Selecione o médico</option>
+        </select>
+        <label for="editPhone">Telefone:</label>
+        <input
+          id="editPhone"
+          type="tel"
+          inputmode="numeric"
+          placeholder="67999915653"
+          pattern="[0-9]+"
+          title="Somente números, com DDD"
+          required
+        />
+        <label for="editBirthDate">Data de nascimento:</label>
+        <input id="editBirthDate" type="date" />
+        <label for="editConvenio">Convênio:</label>
+        <input id="editConvenio" type="text" list="convenioOptions" placeholder="Ex: UNIMED, PARTICULAR..." />
+        <label for="editSurgeryType">Tipo de cirurgia:</label>
+        <input id="editSurgeryType" type="text" placeholder="Ex: Facectomia, Catarata..." />
+        <label for="editStatus">Situação:</label>
+        <select id="editStatus" data-options="statuses" required></select>
+        <!-- Campos de data da cirurgia são inseridos aqui por surgery-form.js -->
+        <label for="editScheduledActivation">Data de ativação programada:</label>
+        <input id="editScheduledActivation" type="date" aria-describedby="editScheduledActivationHint" />
+        <small id="editScheduledActivationHint" class="field-hint">
+          <i class="fas fa-circle-info" aria-hidden="true"></i>
+          Ajuste a data para alterar a contagem regressiva
+        </small>
+        <label for="editNotes">Observações (editar ou adicionar):</label>
+        <textarea id="editNotes" placeholder="Observações sobre o paciente..."></textarea>
+        <button type="submit">Salvar alterações</button>
+      </form>
+    </dialog>
 
-    <!-- Modal de Observações -->
-    <div id="notesModal" class="modal">
-      <div class="modal-content notes-modal">
-        <span class="close notes-close"><i class="fas fa-xmark"></i></span>
-        <h3 id="notesTitle">Observações</h3>
-        <div id="notesContent"></div>
-      </div>
-    </div>
+    <!-- Modal de observações -->
+    <dialog id="notesModal" class="modal-content notes-modal" aria-labelledby="notesTitle">
+      <button type="button" class="close" data-close aria-label="Fechar">
+        <i class="fas fa-xmark" aria-hidden="true"></i>
+      </button>
+      <h3 id="notesTitle">Observações</h3>
+      <div id="notesContent" class="notes-content"></div>
+    </dialog>
 
-    <!-- Modal de Preview do Cartão de Confirmação -->
-    <div id="cardPreviewModal" class="modal">
-      <div class="modal-content card-preview-modal">
-        <span class="close card-preview-close"><i class="fas fa-xmark"></i></span>
-        <h3>Cartão de Confirmação</h3>
-        <div class="card-preview-image-wrapper">
-          <img id="cardPreviewImg" alt="Cartão de confirmação cirúrgica" />
-        </div>
-        <div class="card-preview-actions">
-          <button id="cardPreviewDownloadBtn" class="btn-download-card">
-            <i class="fas fa-download"></i> Baixar imagem
-          </button>
-          <p class="hint">
-            Baixe a imagem e anexe manualmente na conversa do WhatsApp do
-            paciente.
-          </p>
-        </div>
+    <!-- Modal de preview do cartão de confirmação -->
+    <dialog id="cardPreviewModal" class="modal-content card-preview-modal" aria-labelledby="cardPreviewTitle">
+      <button type="button" class="close" data-close aria-label="Fechar">
+        <i class="fas fa-xmark" aria-hidden="true"></i>
+      </button>
+      <h3 id="cardPreviewTitle">Cartão de confirmação</h3>
+      <div class="card-preview-image-wrapper">
+        <img id="cardPreviewImg" alt="Cartão de confirmação cirúrgica" />
       </div>
-    </div>
+      <div class="card-preview-actions">
+        <button id="cardPreviewDownloadBtn" type="button" class="btn-download-card">
+          <i class="fas fa-download" aria-hidden="true"></i> Baixar imagem
+        </button>
+        <p class="hint">
+          Baixe a imagem e anexe manualmente na conversa do WhatsApp do
+          paciente.
+        </p>
+      </div>
+    </dialog>
+
+    <!-- Diálogo genérico de confirmação/entrada de texto (substitui confirm/prompt) -->
+    <dialog id="appDialog" class="modal-content app-dialog" aria-labelledby="appDialogTitle">
+      <form>
+        <h3 id="appDialogTitle"></h3>
+        <p id="appDialogMessage" class="app-dialog-message"></p>
+        <div id="appDialogInputWrapper" class="form-field" hidden>
+          <label id="appDialogInputLabel" for="appDialogInput"></label>
+          <input id="appDialogInput" type="text" autocomplete="off" />
+        </div>
+        <div class="app-dialog-actions">
+          <button type="button" id="appDialogCancel" class="btn-ghost">Cancelar</button>
+          <button type="submit" id="appDialogConfirm" class="btn-primary">Confirmar</button>
+        </div>
+      </form>
+    </dialog>
 
     <script type="module" src="main.js"></script>
   </body>

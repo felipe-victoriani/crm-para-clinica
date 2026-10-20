@@ -1,10 +1,11 @@
 // Regras do Firebase Realtime Database
 // Acesse o console do Firebase > Realtime Database > Rules
 // e cole UMA das opções abaixo conforme sua necessidade.
+// IMPORTANTE: este arquivo NÃO é aplicado sozinho — só vale depois de "Publicar" no console.
 
-// Opção 1: Negar tudo (nenhum usuário pode ler/escrever)
-// ATENÇÃO: Isso bloqueia completamente o app.
-// Use apenas para manutenção ou auditoria.
+// ------------------------------------------------------------------
+// Opção 1: Negar tudo (manutenção/auditoria) — bloqueia o app
+// ------------------------------------------------------------------
 // {
 //   "rules": {
 //     ".read": false,
@@ -12,18 +13,64 @@
 //   }
 // }
 
-// Opção 2 (Recomendada): Permitir apenas usuários autenticados
-// Essa opção mantém o app funcional e seguro.
+// ------------------------------------------------------------------
+// Opção 2 (atual): qualquer usuário autenticado lê e escreve tudo
+// ------------------------------------------------------------------
+// LGPD: dados de saúde ficam acessíveis a QUALQUER conta criada no
+// Firebase Auth do projeto. Se alguém conseguir criar conta (ex: cadastro
+// por e-mail habilitado), lê todos os pacientes. Prefira a Opção 3.
+// {
+//   "rules": {
+//     ".read": "auth != null",
+//     ".write": "auth != null",
+//     "patients": {
+//       ".indexOn": ["createdAt", "lastContactAt"]
+//     }
+//   }
+// }
+
+// ------------------------------------------------------------------
+// Opção 3 (RECOMENDADA): só usuários da equipe + validação dos dados
+// ------------------------------------------------------------------
+// ANTES de publicar (senão você se tranca para fora):
+//   1. Firebase Console > Authentication > Users: copie o UID de cada
+//      pessoa da equipe (Felipe, Gabi...).
+//   2. Realtime Database > Data: crie o nó  allowedUsers/<UID> = true
+//      para cada um.
+//   3. Só então publique as regras abaixo.
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
+    // Lista de acesso: ninguém lê nem altera pelo app (só pelo console)
+    "allowedUsers": {
+      ".read": false,
+      ".write": false
+    },
     "patients": {
-      ".indexOn": ["createdAt", "lastContactAt"]
+      ".read": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true",
+      ".indexOn": ["createdAt", "lastContactAt"],
+      "$patientId": {
+        // Paciente novo precisa de nome e situação; exclusão (null) é permitida
+        ".validate": "!newData.exists() || newData.hasChildren(['name', 'status'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
+        },
+        "phone": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9]{0,15}$/)"
+        },
+        "status": {
+          ".validate": "newData.val() === 'Paciente solicitado risco' || newData.val() === 'Paciente agendou cirurgia' || newData.val() === 'Paciente fez cirurgia' || newData.val() === 'Cirurgias Refrativas' || newData.val() === 'Paciente não quer operar'"
+        },
+        "notes": {
+          ".validate": "newData.isString() && newData.val().length <= 5000"
+        }
+      }
     }
   }
 }
 
 // Observações:
 // - Após colar as regras no Console do Firebase, clique em "Publicar".
-// - Os índices em createdAt e lastContactAt melhoram o desempenho de consultas/ordenções.
+// - Use o "Simulador de regras" do console para testar leitura com um UID
+//   da lista e com um UID fora dela antes de publicar.
+// - Os índices em createdAt e lastContactAt melhoram o desempenho de consultas/ordenações.

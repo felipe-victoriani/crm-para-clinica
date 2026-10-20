@@ -1,0 +1,10 @@
+# Dependências (reinstaladas com npm install)
+node_modules/
+
+# Logs e arquivos de sistema
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel

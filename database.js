@@ -40,8 +40,11 @@ function mockUpdate(path, data) {
   const index = patients.findIndex((p) => p.id === id);
   if (index !== -1) {
     patients[index] = { ...patients[index], ...data };
-    localStorage.setItem(patientsKey, JSON.stringify(patients));
+  } else {
+    // Igual ao Firebase: update num caminho inexistente cria o registro (usado no "Desfazer")
+    patients.push({ ...data, id });
   }
+  localStorage.setItem(patientsKey, JSON.stringify(patients));
 }
 
 function mockRemove(path) {

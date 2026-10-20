@@ -1,0 +1,3 @@
+# Sistema interno com dados de pacientes: não indexar
+User-agent: *
+Disallow: /

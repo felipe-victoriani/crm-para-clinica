@@ -6,6 +6,22 @@ import {
   copyCartaoToClipboard,
   gerarImagemHtml,
 } from "./cartaoConfirmacao.js";
+import {
+  escapeHtml,
+  showToast,
+  promptDialog,
+  toLocalISODate,
+} from "./utils.js";
+import { openEditModal } from "./ui.js";
+
+// Filtro rápido de intervalo ativo ("week" | "month" | null)
+let activeRange = null;
+
+// Último anestesista informado (pré-preenche o próximo mapa)
+let lastAnestesista = "";
+
+// Cards com "Dados do mapa" expandidos (mantém aberto após re-render)
+const openMapDetails = new Set();
 
 /**
  * Converte uma string de data YYYY-MM-DD para Date no timezone local
@@ -169,14 +185,24 @@ export function generateWhatsAppLink(phone, message) {
     fullPhone = "55" + cleanPhone;
   }
 
+  // api.whatsapp.com/send em vez de wa.me: o redirect do wa.me corrompe emoji
   if (!message) {
-    return `https://wa.me/${fullPhone}`;
+    return `https://api.whatsapp.com/send?phone=${fullPhone}`;
   }
 
   // Codificar mensagem para URL
   const encodedMessage = encodeURIComponent(message);
 
-  return `https://wa.me/${fullPhone}?text=${encodedMessage}`;
+  return `https://api.whatsapp.com/send?phone=${fullPhone}&text=${encodedMessage}`;
+}
+
+/**
+ * Normaliza horário gravado ("7h15", "07h15", "07:15") para "HH:MM",
+ * formato exigido pelo <input type="time"> e usado no mapa impresso.
+ */
+function toTimeInputValue(time) {
+  const [h, m] = String(time || "07h15").split(/[h:]/);
+  return `${String(Number(h) || 0).padStart(2, "0")}:${String(Number(m) || 0).padStart(2, "0")}`;
 }
 
 /**
@@ -278,27 +304,19 @@ async function sendTuesdayCard(patient) {
       [tuesdaySentField(patient)]: Date.now(),
     });
 
-    if (typeof window.showToast === "function") {
-      window.showToast(
-        "Imagem copiada! Cole (Ctrl+V) na conversa que acabou de abrir e envie.",
-        "success",
-      );
-    } else {
-      alert(
-        "Imagem copiada! Cole (Ctrl+V) na conversa que acabou de abrir e envie.",
-      );
-    }
+    showToast(
+      "Imagem copiada! Cole (Ctrl+V) na conversa que acabou de abrir e envie.",
+      "success",
+    );
   } catch (clipboardError) {
     console.warn(
       "Não foi possível copiar automaticamente, caindo para download manual:",
       clipboardError,
     );
-    if (typeof window.showToast === "function") {
-      window.showToast(
-        "Não foi possível copiar automaticamente neste navegador. Baixe e anexe manualmente.",
-        "error",
-      );
-    }
+    showToast(
+      "Não foi possível copiar automaticamente neste navegador. Baixe e anexe manualmente.",
+      "error",
+    );
     openCardPreviewModal(dataUrl, fileName, patient);
   }
 }
@@ -325,11 +343,73 @@ function rerenderKeepingFilter() {
   );
 }
 
+// Indica se há uma atualização adiada esperando o usuário sair do campo
+let pendingRefresh = false;
+
+/**
+ * Re-renderiza a agenda quando os dados mudam no Firebase (outro usuário
+ * editou, por exemplo). Se o usuário estiver digitando num campo da agenda,
+ * adia até ele sair do campo — senão o re-render apagaria o que está digitando.
+ */
+export function refreshSurgeryScheduleSafely() {
+  const container = document.getElementById("surgeryScheduleContent");
+  if (!container) return;
+
+  const editing =
+    container.contains(document.activeElement) &&
+    document.activeElement.matches("input, select, textarea");
+
+  if (!editing) {
+    rerenderKeepingFilter();
+    return;
+  }
+
+  // Já existe uma atualização agendada: não registra outro listener
+  if (pendingRefresh) return;
+  pendingRefresh = true;
+  container.addEventListener(
+    "focusout",
+    () => {
+      // Espera o foco ir para o próximo elemento antes de decidir
+      setTimeout(() => {
+        pendingRefresh = false;
+        refreshSurgeryScheduleSafely();
+      }, 0);
+    },
+    { once: true },
+  );
+}
+
+/**
+ * Retorna o intervalo [início, fim] (Date, dias inteiros) do filtro rápido ativo.
+ */
+function getActiveRangeBounds() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+
+  if (activeRange === "week") {
+    // Semana corrente: domingo a sábado
+    start.setDate(start.getDate() - start.getDay());
+    end.setTime(start.getTime());
+    end.setDate(start.getDate() + 6);
+  } else if (activeRange === "month") {
+    // Mês corrente inteiro
+    start.setDate(1);
+    end.setMonth(start.getMonth() + 1, 0);
+  } else {
+    return null;
+  }
+
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
 /**
  * Lista os lembretes (sexta ou terça) que deveriam ser enviados hoje e ainda
  * não foram registrados como enviados, para a fila de "Lembretes de Hoje".
  */
-function getPendingRemindersToday() {
+export function getPendingRemindersToday() {
   const patients = getSurgeryScheduledPatients();
   const pending = [];
 
@@ -353,6 +433,37 @@ function getPendingRemindersToday() {
   });
 
   return pending;
+}
+
+/**
+ * Envia um lembrete pendente (sexta = texto, terça = cartão) a partir do id
+ * do card. Usado pela fila da agenda e pelo bloco "Hoje" do dashboard.
+ */
+export async function sendPendingReminder(cardId, type) {
+  const patient = findPatientByCardId(cardId);
+  if (!patient) throw new Error("Paciente não encontrado na agenda.");
+  if (type === "friday") {
+    await sendFridayReminder(patient);
+  } else {
+    await sendTuesdayCard(patient);
+  }
+  rerenderKeepingFilter();
+}
+
+/**
+ * Próximas cirurgias (a partir de hoje) dentro de N dias, ordenadas por data.
+ */
+export function getUpcomingSurgeries(days = 7) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const limit = new Date(today);
+  limit.setDate(limit.getDate() + days);
+  limit.setHours(23, 59, 59, 999);
+
+  return getSurgeryScheduledPatients()
+    .map((p) => ({ patient: p, date: parseDateLocal(p._displayDate) }))
+    .filter(({ date }) => date && date >= today && date <= limit)
+    .sort((a, b) => a.date - b.date);
 }
 
 /**
@@ -403,46 +514,61 @@ export function renderSurgerySchedule(filterDate = null) {
   try {
     let patients = getSurgeryScheduledPatients();
 
-    // Aplicar filtro de data se fornecido
+    // Data específica tem prioridade sobre o filtro rápido de intervalo
     if (filterDate) {
+      activeRange = null;
       patients = patients.filter((p) => p._displayDate === filterDate);
+    } else {
+      const bounds = getActiveRangeBounds();
+      if (bounds) {
+        patients = patients.filter((p) => {
+          const date = parseDateLocal(p._displayDate);
+          return date && date >= bounds.start && date <= bounds.end;
+        });
+      }
     }
 
     if (counter) {
       counter.textContent = `(${patients.length})`;
     }
 
-    // Criar controles de filtro
+    // Qual botão de filtro rápido está ativo (destaque + aria-pressed)
     const today = new Date();
-    const todayString = today.toISOString().split("T")[0];
+    const todayString = toLocalISODate(today);
+    const activeQuick = filterDate
+      ? filterDate === todayString
+        ? "today"
+        : null
+      : activeRange || "all";
+    const quickBtn = (key, label) =>
+      `<button type="button" class="btn-quick-filter ${activeQuick === key ? "active" : ""}" data-filter="${key}" aria-pressed="${activeQuick === key}">${label}</button>`;
 
     let html = `
     <div class="surgery-filters">
       <div class="filter-group">
-        <label><i class="fas fa-calendar"></i> Filtrar por data:</label>
-        <input 
-          type="date" 
-          id="surgeryDateFilter" 
+        <label for="surgeryDateFilter"><i class="fas fa-calendar" aria-hidden="true"></i> Filtrar por data:</label>
+        <input
+          type="date"
+          id="surgeryDateFilter"
           class="date-filter-input"
-          value="${filterDate || ""}"
-          placeholder="Todas as datas"
+          value="${escapeHtml(filterDate || "")}"
         />
-        <button id="clearDateFilter" class="btn-clear-filter" title="Limpar filtro">
-          <i class="fas fa-times"></i> Limpar
+        <button type="button" id="clearDateFilter" class="btn-clear-filter">
+          <i class="fas fa-times" aria-hidden="true"></i> Limpar
         </button>
       </div>
-      <div class="filter-quick-links">
-        <button class="btn-quick-filter" data-filter="today">Hoje</button>
-        <button class="btn-quick-filter" data-filter="week">Esta Semana</button>
-        <button class="btn-quick-filter" data-filter="month">Este Mês</button>
-        <button class="btn-quick-filter" data-filter="all">Todas</button>
+      <div class="filter-quick-links" role="group" aria-label="Filtros rápidos">
+        ${quickBtn("today", "Hoje")}
+        ${quickBtn("week", "Esta semana")}
+        ${quickBtn("month", "Este mês")}
+        ${quickBtn("all", "Todas")}
       </div>
       <div class="surgery-map-actions">
-        <button id="printSurgeryMapBtn" class="btn-print-map" title="Imprimir mapa cirúrgico do dia filtrado">
-          <i class="fas fa-print"></i> Imprimir Mapa do Dia
+        <button type="button" id="printSurgeryMapBtn" class="btn-print-map" title="Imprimir mapa cirúrgico do dia filtrado">
+          <i class="fas fa-print" aria-hidden="true"></i> Imprimir mapa do dia
         </button>
-        <button id="sendSurgeryMapBtn" class="btn-whatsapp-map" title="Enviar mapa cirúrgico do dia por WhatsApp">
-          <i class="fab fa-whatsapp"></i> Enviar Mapa por WhatsApp
+        <button type="button" id="sendSurgeryMapBtn" class="btn-whatsapp-map" title="Enviar mapa cirúrgico do dia por WhatsApp">
+          <i class="fab fa-whatsapp" aria-hidden="true"></i> Enviar mapa por WhatsApp
         </button>
       </div>
     </div>
@@ -460,18 +586,18 @@ export function renderSurgerySchedule(filterDate = null) {
               const cardId = `${patient.id}-${patient._displayDate}`;
               const isFriday = type === "friday";
               const label = isFriday
-                ? "Lembrete Sexta (texto)"
-                : "Cartão de Confirmação (terça)";
+                ? "Lembrete de sexta (texto)"
+                : "Cartão de confirmação (terça)";
               const iconSet = isFriday ? "fab" : "fas";
               const icon = isFriday ? "fa-whatsapp" : "fa-id-card";
               return `
               <div class="pending-reminder-row">
                 <div class="pending-reminder-info">
-                  <strong>${patient.name}</strong>
+                  <strong>${escapeHtml(patient.name)}</strong>
                   <span class="pending-reminder-type">${label}</span>
                 </div>
-                <button class="btn-send-pending" data-card-id="${cardId}" data-type="${type}">
-                  <i class="${iconSet} ${icon}"></i> Enviar
+                <button type="button" class="btn-send-pending" data-card-id="${escapeHtml(cardId)}" data-type="${type}" aria-label="Enviar ${label} para ${escapeHtml(patient.name)}">
+                  <i class="${iconSet} ${icon}" aria-hidden="true"></i> Enviar
                 </button>
               </div>
             `;
@@ -486,8 +612,8 @@ export function renderSurgerySchedule(filterDate = null) {
       html += `
       <div class="empty-state">
         <i class="fas fa-calendar-xmark"></i>
-        <h3>Nenhuma cirurgia ${filterDate ? "nesta data" : "agendada"}</h3>
-        <p>${filterDate ? "Tente outra data ou limpe o filtro." : "Quando pacientes agendarem cirurgias, eles aparecerão aqui."}</p>
+        <h3>Nenhuma cirurgia ${filterDate || activeRange ? "neste período" : "agendada"}</h3>
+        <p>${filterDate || activeRange ? "Tente outro período ou limpe o filtro." : "Quando pacientes agendarem cirurgias, eles aparecerão aqui."}</p>
       </div>
     `;
       container.innerHTML = html;
@@ -592,7 +718,7 @@ export function renderSurgerySchedule(filterDate = null) {
         <i class="fas fa-exclamation-triangle"></i>
         <h3>Erro ao carregar agenda</h3>
         <p>Ocorreu um erro ao carregar a agenda cirúrgica. Tente recarregar a página.</p>
-        <p style="color: #ef4444; font-size: 0.85rem; margin-top: 0.5rem;">Detalhes: ${error.message}</p>
+        <p class="empty-state-error">Detalhes: ${escapeHtml(error.message)}</p>
       </div>
     `;
   }
@@ -735,14 +861,22 @@ function renderSurgeryCard(patient, type) {
     ? '<div class="second-surgery-badge"><i class="fas fa-eye"></i> Segunda cirurgia (outro olho)</div>'
     : "";
 
+  // Resumo de uma linha do mapa (aparece com o bloco recolhido)
+  const mapSummary =
+    [mapEye, mapLio, patient.convenio].filter(Boolean).join(" · ") ||
+    "Olho, LIO e convênio não preenchidos";
+
   // ID único para o card (inclui a data para diferenciar quando há duas cirurgias)
-  const cardId = `${patient.id}-${dateToDisplay}`;
+  const cardId = escapeHtml(`${patient.id}-${dateToDisplay}`);
+  const pid = escapeHtml(patient.id);
+  // Prefixo único dos ids de campos (associa <label for> ao input certo)
+  const fieldPrefix = `sc-${cardId}`;
 
   return `
-    <div class="surgery-card ${statusClass}" data-patient-id="${patient.id}" data-card-id="${cardId}" data-display-date="${dateToDisplay}">
+    <article class="surgery-card ${statusClass}" data-patient-id="${pid}" data-card-id="${cardId}" data-display-date="${escapeHtml(dateToDisplay)}">
       <div class="surgery-card-header">
         <div class="surgery-status">
-          <i class="fas ${statusIcon}"></i>
+          <i class="fas ${statusIcon}" aria-hidden="true"></i>
           <span>${statusText}</span>
         </div>
         <div class="surgery-date">
@@ -750,42 +884,48 @@ function renderSurgeryCard(patient, type) {
           <small>${surgeryDateInfo.dayName}</small>
         </div>
       </div>
-      
+
       <div class="surgery-card-body">
-        <h4><i class="fas fa-user"></i> ${patient.name}</h4>
+        <h4><i class="fas fa-user" aria-hidden="true"></i> ${escapeHtml(patient.name)}</h4>
         ${secondSurgeryBadge}
         <div class="surgery-details">
           <p class="editable-time-row">
-            <i class="fas fa-scissors"></i>
-            <strong>Cirurgia:</strong>
+            <i class="fas fa-scissors" aria-hidden="true"></i>
+            <label for="${fieldPrefix}-type"><strong>Cirurgia:</strong></label>
             <input
+              id="${fieldPrefix}-type"
               type="text"
               class="surgery-type-input"
-              data-patient-id="${patient.id}"
+              data-patient-id="${pid}"
               data-field="surgeryType"
-              value="${patient.surgeryType || ""}"
+              value="${escapeHtml(patient.surgeryType || "")}"
               placeholder="Ex: Facectomia, Catarata..."
-              title="Clique para editar o tipo de cirurgia"
             />
           </p>
           <p class="editable-time-row">
-            <i class="fas fa-clock"></i> 
-            <strong>Horário:</strong> 
-            <input 
-              type="time" 
-              class="surgery-time-input" 
-              data-patient-id="${patient.id}" 
-              value="${surgeryTime.replace("h", ":")}" 
-              title="Clique para editar o horário"
+            <i class="fas fa-clock" aria-hidden="true"></i>
+            <label for="${fieldPrefix}-time"><strong>Horário:</strong></label>
+            <input
+              id="${fieldPrefix}-time"
+              type="time"
+              class="surgery-time-input"
+              data-patient-id="${pid}"
+              value="${escapeHtml(toTimeInputValue(surgeryTime))}"
             />
           </p>
-          <p><i class="fas fa-phone"></i> <strong>Telefone:</strong> ${patient.phone}</p>
-          ${patient.doctor ? `<p><i class="fas fa-user-md"></i> <strong>Médico:</strong> ${patient.doctor}</p>` : ""}
+          <p><i class="fas fa-phone" aria-hidden="true"></i> <strong>Telefone:</strong> ${escapeHtml(formatPhoneDisplay(patient.phone))}</p>
+          ${patient.doctor ? `<p><i class="fas fa-user-md" aria-hidden="true"></i> <strong>Médico:</strong> ${escapeHtml(patient.doctor)}</p>` : ""}
         </div>
+        <details class="surgery-card-more" data-card-id="${cardId}" ${openMapDetails.has(`${patient.id}-${dateToDisplay}`) ? "open" : ""}>
+          <summary>
+            <span class="surgery-card-more-label">Dados do mapa</span>
+            <span class="surgery-card-more-summary">${escapeHtml(mapSummary)}</span>
+            <i class="fas fa-chevron-down" aria-hidden="true"></i>
+          </summary>
         <div class="surgery-map-edit-fields">
           <div class="surgery-map-edit-field">
-            <label><i class="fas fa-eye"></i> Olho</label>
-            <select class="surgery-eye-input" data-patient-id="${patient.id}" data-field="${eyeField}" title="Clique para editar o olho">
+            <label for="${fieldPrefix}-eye"><i class="fas fa-eye" aria-hidden="true"></i> Olho</label>
+            <select id="${fieldPrefix}-eye" class="surgery-eye-input" data-patient-id="${pid}" data-field="${eyeField}">
               <option value="" ${!mapEye ? "selected" : ""}>-</option>
               <option value="OD" ${mapEye === "OD" ? "selected" : ""}>OD</option>
               <option value="OE" ${mapEye === "OE" ? "selected" : ""}>OE</option>
@@ -793,18 +933,19 @@ function renderSurgeryCard(patient, type) {
             </select>
           </div>
           <div class="surgery-map-edit-field">
-            <label><i class="fas fa-hashtag"></i> Qt</label>
-            <input type="number" min="1" class="surgery-qty-input" data-patient-id="${patient.id}" data-field="${qtyField}" value="${mapQty}" title="Clique para editar a quantidade" />
+            <label for="${fieldPrefix}-qty"><i class="fas fa-hashtag" aria-hidden="true"></i> Qt</label>
+            <input id="${fieldPrefix}-qty" type="number" min="1" class="surgery-qty-input" data-patient-id="${pid}" data-field="${qtyField}" value="${escapeHtml(mapQty)}" />
           </div>
           <div class="surgery-map-edit-field surgery-map-edit-field--wide">
-            <label><i class="fas fa-glasses"></i> LIO</label>
-            <input type="text" class="surgery-lio-input" data-patient-id="${patient.id}" data-field="${lioField}" value="${mapLio}" placeholder="Ex: ISERT +21.0" title="Clique para editar a LIO" />
+            <label for="${fieldPrefix}-lio"><i class="fas fa-glasses" aria-hidden="true"></i> LIO</label>
+            <input id="${fieldPrefix}-lio" type="text" class="surgery-lio-input" data-patient-id="${pid}" data-field="${lioField}" value="${escapeHtml(mapLio)}" placeholder="Ex: ISERT +21.0" />
           </div>
           <div class="surgery-map-edit-field surgery-map-edit-field--wide">
-            <label><i class="fas fa-file-medical"></i> Convênio</label>
-            <input type="text" class="surgery-convenio-input" data-patient-id="${patient.id}" data-field="convenio" value="${patient.convenio || ""}" list="convenioOptions" placeholder="Ex: UNIMED" title="Clique para editar o convênio" />
+            <label for="${fieldPrefix}-conv"><i class="fas fa-file-medical" aria-hidden="true"></i> Convênio</label>
+            <input id="${fieldPrefix}-conv" type="text" class="surgery-convenio-input" data-patient-id="${pid}" data-field="convenio" value="${escapeHtml(patient.convenio || "")}" list="convenioOptions" placeholder="Ex: UNIMED" />
           </div>
         </div>
+        </details>
         ${wednesdayWarning}
         ${reminderStatus}
       </div>
@@ -825,12 +966,23 @@ function renderSurgeryCard(patient, type) {
         `
             : ""
         }
-        <button class="btn-view-patient" data-patient-id="${patient.id}" title="Ver detalhes do paciente">
-          <i class="fas fa-eye"></i> Ver Paciente
+        <button type="button" class="btn-view-patient" data-patient-id="${pid}">
+          <i class="fas fa-eye" aria-hidden="true"></i> Ver paciente
         </button>
       </div>
-    </div>
+    </article>
   `;
+}
+
+/**
+ * Feedback visual rápido no campo editado (verde = salvo, vermelho = erro),
+ * via classe CSS em vez de cor fixa inline.
+ */
+function flashField(input, ok) {
+  const cls = ok ? "field-saved" : "field-error";
+  input.classList.remove("field-saved", "field-error");
+  input.classList.add(cls);
+  if (ok) setTimeout(() => input.classList.remove(cls), 1000);
 }
 
 /**
@@ -853,25 +1005,15 @@ function attachWhatsAppListeners() {
         rerenderKeepingFilter();
       } catch (error) {
         console.error("Erro ao enviar lembrete de sexta:", error);
-        if (typeof window.showToast === "function") {
-          window.showToast("Erro ao registrar envio do lembrete", "error");
-        }
+        showToast("Erro ao registrar envio do lembrete", "error");
       }
     });
   });
 
-  // Listeners para visualizar paciente
+  // "Ver paciente": abre o modal de edição direto, sem sair da agenda
   viewButtons.forEach((button) => {
     button.addEventListener("click", (e) => {
-      const patientId = e.currentTarget.dataset.patientId;
-      // Trocar para a seção de pacientes e abrir o modal de edição
-      document.querySelector('[data-section="patients"]').click();
-      setTimeout(() => {
-        const editButton = document.querySelector(`[data-id="${patientId}"]`);
-        if (editButton) {
-          editButton.click();
-        }
-      }, 100);
+      openEditModal(e.currentTarget.dataset.patientId);
     });
   });
 
@@ -888,22 +1030,13 @@ function attachWhatsAppListeners() {
         try {
           await updatePatient(patientId, { surgeryTime: formattedTime });
 
-          // Mostrar feedback visual
-          e.target.style.borderColor = "#10b981";
-          setTimeout(() => {
-            e.target.style.borderColor = "";
-          }, 1000);
-
-          // Atualizar se a função de toast existir
-          if (typeof window.showToast === "function") {
-            window.showToast("Horário atualizado!", "success");
-          }
+          // Feedback visual + toast
+          flashField(e.target, true);
+          showToast("Horário atualizado!", "success");
         } catch (error) {
           console.error("Erro ao atualizar horário:", error);
-          e.target.style.borderColor = "#ef4444";
-          if (typeof window.showToast === "function") {
-            window.showToast("Erro ao atualizar horário", "error");
-          }
+          flashField(e.target, false);
+          showToast("Erro ao atualizar horário", "error");
         }
       }
     });
@@ -931,20 +1064,13 @@ function attachMapFieldListeners() {
       try {
         await updatePatient(patientId, { [field]: value });
 
-        e.target.style.borderColor = "#10b981";
-        setTimeout(() => {
-          e.target.style.borderColor = "";
-        }, 1000);
-
-        if (typeof window.showToast === "function") {
-          window.showToast("Dado atualizado!", "success");
-        }
+        // Feedback visual + toast
+        flashField(e.target, true);
+        showToast("Dado atualizado!", "success");
       } catch (error) {
         console.error("Erro ao atualizar campo do mapa cirúrgico:", error);
-        e.target.style.borderColor = "#ef4444";
-        if (typeof window.showToast === "function") {
-          window.showToast("Erro ao atualizar dado", "error");
-        }
+        flashField(e.target, false);
+        showToast("Erro ao atualizar dado", "error");
       }
     });
   });
@@ -971,14 +1097,7 @@ function attachCardConfirmacaoListeners() {
         rerenderKeepingFilter();
       } catch (error) {
         console.error("Erro ao gerar cartão de confirmação:", error);
-        if (typeof window.showToast === "function") {
-          window.showToast(
-            error.message || "Erro ao gerar cartão de confirmação",
-            "error",
-          );
-        } else {
-          alert(error.message || "Erro ao gerar cartão de confirmação");
-        }
+        showToast(error.message || "Erro ao gerar cartão de confirmação", "error");
         button.disabled = false;
         button.innerHTML = originalLabel;
       }
@@ -1004,9 +1123,7 @@ function attachConfirmPresenceListeners() {
         rerenderKeepingFilter();
       } catch (error) {
         console.error("Erro ao atualizar confirmação de presença:", error);
-        if (typeof window.showToast === "function") {
-          window.showToast("Erro ao atualizar confirmação de presença", "error");
-        }
+        showToast("Erro ao atualizar confirmação de presença", "error");
         button.disabled = false;
       }
     });
@@ -1017,34 +1134,24 @@ function attachConfirmPresenceListeners() {
  * Adiciona listeners para os botões da fila de "Lembretes Pendentes de Hoje"
  */
 function attachPendingReminderListeners() {
-  const pendingButtons = document.querySelectorAll(".btn-send-pending");
+  // Escopo: só os botões da agenda (o dashboard tem os seus próprios)
+  const pendingButtons = document.querySelectorAll(
+    "#surgeryScheduleContent .btn-send-pending",
+  );
 
   pendingButtons.forEach((button) => {
     button.addEventListener("click", async (e) => {
-      const cardId = e.currentTarget.dataset.cardId;
-      const type = e.currentTarget.dataset.type;
-      const patient = findPatientByCardId(cardId);
-      if (!patient) return;
+      const { cardId, type } = e.currentTarget.dataset;
 
       const originalLabel = button.innerHTML;
       button.disabled = true;
-      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+      button.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Enviando...';
 
       try {
-        if (type === "friday") {
-          await sendFridayReminder(patient);
-        } else {
-          await sendTuesdayCard(patient);
-        }
-        rerenderKeepingFilter();
+        await sendPendingReminder(cardId, type);
       } catch (error) {
         console.error("Erro ao enviar lembrete pendente:", error);
-        if (typeof window.showToast === "function") {
-          window.showToast(
-            error.message || "Erro ao enviar lembrete",
-            "error",
-          );
-        }
+        showToast(error.message || "Erro ao enviar lembrete", "error");
         button.disabled = false;
         button.innerHTML = originalLabel;
       }
@@ -1069,9 +1176,10 @@ function openCardPreviewModal(dataUrl, fileName, patient) {
   }
 
   img.src = dataUrl;
+  // onclick (e não addEventListener) para substituir o handler do cartão anterior
   downloadBtn.onclick = async () => {
     downloadCartaoImage(dataUrl, fileName);
-    modal.style.display = "none";
+    modal.close();
     if (patient) {
       try {
         await updatePatient(patient.id, {
@@ -1080,10 +1188,11 @@ function openCardPreviewModal(dataUrl, fileName, patient) {
         rerenderKeepingFilter();
       } catch (error) {
         console.error("Erro ao registrar envio do cartão:", error);
+        showToast("Imagem baixada, mas não foi possível registrar o envio.", "error");
       }
     }
   };
-  modal.style.display = "flex";
+  modal.showModal();
 }
 
 /**
@@ -1139,39 +1248,37 @@ function getMapFieldsForCard(patient) {
  * Reúne os pacientes do dia filtrado e pergunta o nome do(a) anestesista.
  * Retorna null se não houver dados válidos ou o usuário cancelar o prompt.
  */
-function prepareSurgeryMapData(dateString) {
+async function prepareSurgeryMapData(dateString) {
   if (!dateString) {
-    if (typeof window.showToast === "function") {
-      window.showToast(
-        "Selecione uma data no filtro para gerar o mapa do dia.",
-        "error",
-      );
-    } else {
-      alert("Selecione uma data no filtro para gerar o mapa do dia.");
-    }
+    showToast("Selecione uma data no filtro para gerar o mapa do dia.", "error");
+    document.getElementById("surgeryDateFilter")?.focus();
     return null;
   }
 
+  // Ordena pelo horário em minutos ("7h15" e "07h15" valem o mesmo)
+  const toMinutes = (time) => {
+    const [h, m] = String(time || "07h15").split(/[h:]/).map(Number);
+    return (h || 0) * 60 + (m || 0);
+  };
   const patientsOfDay = getSurgeryScheduledPatients()
     .filter((p) => p._displayDate === dateString)
-    .sort((a, b) => (a.surgeryTime || "").localeCompare(b.surgeryTime || ""));
+    .sort((a, b) => toMinutes(a.surgeryTime) - toMinutes(b.surgeryTime));
 
   if (patientsOfDay.length === 0) {
-    if (typeof window.showToast === "function") {
-      window.showToast("Nenhuma cirurgia agendada para esta data.", "error");
-    } else {
-      alert("Nenhuma cirurgia agendada para esta data.");
-    }
+    showToast("Nenhuma cirurgia agendada para esta data.", "error");
     return null;
   }
 
-  const anestesista = prompt(
-    "Nome do(a) anestesista responsável pelo mapa:",
-    window.__lastAnestesista || "",
-  );
+  // Diálogo próprio no lugar do prompt() nativo
+  const anestesista = await promptDialog({
+    title: "Mapa cirúrgico",
+    label: "Nome do(a) anestesista responsável:",
+    value: lastAnestesista,
+    confirmLabel: "Gerar mapa",
+  });
   if (anestesista === null) return null; // Usuário cancelou
 
-  window.__lastAnestesista = anestesista;
+  lastAnestesista = anestesista;
 
   return { dateString, patientsOfDay, anestesista };
 }
@@ -1234,7 +1341,7 @@ function buildSurgeryMapHtml({ dateString, patientsOfDay, anestesista }) {
   const summaryItems = typeSummary
     .map(
       (item) =>
-        `<span class="surgery-map-summary-item">${item.count} ${item.label}</span>`,
+        `<span class="surgery-map-summary-item">${item.count} ${escapeHtml(item.label)}</span>`,
     )
     .join('<span class="surgery-map-summary-sep">·</span>');
 
@@ -1245,21 +1352,25 @@ function buildSurgeryMapHtml({ dateString, patientsOfDay, anestesista }) {
       const eyeClass = eye ? `map-eye-badge map-eye-${eye.toLowerCase()}` : "";
       return `
       <tr class="${index % 2 === 1 ? "map-row-alt" : ""}">
-        <td>${patient.doctor || ""}</td>
-        <td class="map-col-time">${(patient.surgeryTime || "").replace("h", ":")}</td>
-        <td class="map-col-name">${patient.name || ""}</td>
+        <td>${escapeHtml(patient.doctor)}</td>
+        <td class="map-col-time">${escapeHtml(toTimeInputValue(patient.surgeryTime))}</td>
+        <td class="map-col-name">${escapeHtml(patient.name)}</td>
         <td>${patient.birthDate ? formatDateWithWeekday(patient.birthDate).short : ""}</td>
         <td>${age}</td>
-        <td>${patient.convenio || ""}</td>
-        <td>${patient.surgeryType || ""}</td>
-        <td>${eye ? `<span class="${eyeClass}">${eye}</span>` : ""}</td>
-        <td>${qty}</td>
-        <td class="map-col-lio">${lio || "-"}</td>
-        <td>${formatPhoneDisplay(patient.phone)}</td>
+        <td>${escapeHtml(patient.convenio)}</td>
+        <td>${escapeHtml(patient.surgeryType)}</td>
+        <td>${eye ? `<span class="${escapeHtml(eyeClass)}">${escapeHtml(eye)}</span>` : ""}</td>
+        <td>${escapeHtml(qty)}</td>
+        <td class="map-col-lio">${escapeHtml(lio || "-")}</td>
+        <td class="map-col-phone">${escapeHtml(formatPhoneDisplay(patient.phone))}</td>
       </tr>
     `;
     })
     .join("");
+
+  // Data/hora de geração: identifica a versão mais recente se houver reimpressão
+  const now = new Date();
+  const generatedAt = `${now.toLocaleDateString("pt-BR")} às ${String(now.getHours()).padStart(2, "0")}h${String(now.getMinutes()).padStart(2, "0")}`;
 
   return `
     <div class="surgery-map-page ${densityClass}">
@@ -1295,24 +1406,32 @@ function buildSurgeryMapHtml({ dateString, patientsOfDay, anestesista }) {
         </tbody>
       </table>
       <div class="surgery-map-summary">
-        <span class="surgery-map-summary-total">${patientsOfDay.length} procedimento${patientsOfDay.length === 1 ? "" : "s"} hoje</span>
+        <span class="surgery-map-summary-total">${patientsOfDay.length} procedimento${patientsOfDay.length === 1 ? "" : "s"} no dia</span>
         <span class="surgery-map-summary-sep">—</span>
         ${summaryItems}
       </div>
       <div class="surgery-map-footer">
-        <span class="surgery-map-footer-label">Anestesista responsável</span>
-        <span class="surgery-map-footer-value">${anestesista ? anestesista.toUpperCase() : "—"}</span>
+        <span class="surgery-map-footer-spacer" aria-hidden="true"></span>
+        <span class="surgery-map-footer-main">
+          <span class="surgery-map-footer-label">Anestesista responsável</span>
+          <span class="surgery-map-footer-value">${anestesista ? escapeHtml(anestesista.toUpperCase()) : "—"}</span>
+        </span>
+        <span class="surgery-map-footer-meta">Gerado em ${generatedAt}</span>
       </div>
     </div>
   `;
 }
 
-// Largura útil aproximada (em px, a 96dpi) de uma página A4 em paisagem
-// já descontando as margens de impressão definidas em @page.
-const MAP_PAGE_WIDTH_PX = 1040;
-// Altura útil aproximada da mesma página, com uma margem de segurança
-// para variações de impressora/tamanho de papel.
-const MAP_PAGE_MAX_HEIGHT_PX = 700;
+// Área útil de uma A4 em paisagem (297 x 210 mm) descontando a margem de
+// 5 mm de cada lado definida em @page (style.css). 5 mm é o mínimo seguro:
+// a maioria das impressoras não imprime nos últimos ~4 mm do papel.
+// Conversão a 96 dpi: 1 mm = 96 / 25.4 px.
+const MM_TO_PX = 96 / 25.4;
+const MAP_PAGE_MARGIN_MM = 5;
+const MAP_PAGE_WIDTH_PX = Math.floor((297 - 2 * MAP_PAGE_MARGIN_MM) * MM_TO_PX);
+// Altura útil com folga de ~10 px para arredondamentos do motor de impressão
+const MAP_PAGE_MAX_HEIGHT_PX =
+  Math.floor((210 - 2 * MAP_PAGE_MARGIN_MM) * MM_TO_PX) - 10;
 
 /**
  * Mede a altura real do mapa já renderizado e, se ultrapassar o que cabe
@@ -1329,19 +1448,30 @@ function fitSurgeryMapToPage(printArea) {
   const page = printArea.querySelector(".surgery-map-page");
   if (!page) return;
 
+  // Ocupa toda a largura útil da página
   page.style.width = `${MAP_PAGE_WIDTH_PX}px`;
   page.style.fontSize = "";
+  page.style.zoom = "";
 
-  // Até 2 passadas: a 1ª chega perto do alvo, a 2ª corrige a imprecisão
-  // residual (bordas de 1px e outros valores fixos não encolhem com o
-  // font-size, então uma única passada pode ficar levemente acima do alvo).
-  for (let attempt = 0; attempt < 2; attempt++) {
+  // Várias passadas: cada uma chega mais perto do alvo, porque bordas de
+  // 1px e outros valores fixos não encolhem junto com o font-size.
+  for (let attempt = 0; attempt < 6; attempt++) {
     const actualHeight = page.offsetHeight;
     if (actualHeight <= MAP_PAGE_MAX_HEIGHT_PX) break;
 
     const currentFontSizePx = parseFloat(getComputedStyle(page).fontSize);
     const scale = MAP_PAGE_MAX_HEIGHT_PX / actualHeight;
-    page.style.fontSize = `${currentFontSizePx * scale}px`;
+    page.style.fontSize = `${currentFontSizePx * scale * 0.99}px`;
+  }
+
+  // Garantia final de 1 página (dezenas de linhas): zoom reduz o layout
+  // inteiro, inclusive bordas fixas, e a paginação enxerga o tamanho novo.
+  // A largura é compensada para continuar ocupando a página toda.
+  const finalHeight = page.offsetHeight;
+  if (finalHeight > MAP_PAGE_MAX_HEIGHT_PX) {
+    const zoom = MAP_PAGE_MAX_HEIGHT_PX / finalHeight;
+    page.style.zoom = String(zoom);
+    page.style.width = `${MAP_PAGE_WIDTH_PX / zoom}px`;
   }
 }
 
@@ -1349,8 +1479,8 @@ function fitSurgeryMapToPage(printArea) {
  * Gera e imprime o Mapa Cirúrgico do dia filtrado, garantindo que caiba
  * em uma única página.
  */
-function printSurgeryMap(dateString) {
-  const data = prepareSurgeryMapData(dateString);
+async function printSurgeryMap(dateString) {
+  const data = await prepareSurgeryMapData(dateString);
   if (!data) return;
 
   let printArea = document.getElementById("surgeryPrintArea");
@@ -1360,8 +1490,19 @@ function printSurgeryMap(dateString) {
     document.body.appendChild(printArea);
   }
   printArea.innerHTML = buildSurgeryMapHtml(data);
-  fitSurgeryMapToPage(printArea);
 
+  // Classe só durante a impressão: Ctrl+P em outras telas imprime a tela normal
+  document.body.classList.add("printing-map");
+  // Mede com a área visível (display:none tem altura 0 e quebraria o ajuste)
+  printArea.classList.add("is-measuring");
+  fitSurgeryMapToPage(printArea);
+  printArea.classList.remove("is-measuring");
+
+  window.addEventListener(
+    "afterprint",
+    () => document.body.classList.remove("printing-map"),
+    { once: true },
+  );
   window.print();
 }
 
@@ -1371,7 +1512,7 @@ function printSurgeryMap(dateString) {
  * Se o navegador não suportar copiar imagem, cai no fallback de download.
  */
 async function sendSurgeryMapWhatsApp(dateString, button) {
-  const data = prepareSurgeryMapData(dateString);
+  const data = await prepareSurgeryMapData(dateString);
   if (!data) return;
 
   const originalLabel = button ? button.innerHTML : null;
@@ -1390,39 +1531,24 @@ async function sendSurgeryMapWhatsApp(dateString, button) {
     try {
       await copyCartaoToClipboard(blob);
       window.open("https://web.whatsapp.com/", "_blank");
-      if (typeof window.showToast === "function") {
-        window.showToast(
-          "Imagem do mapa copiada! Cole (Ctrl+V) na conversa ou grupo desejado.",
-          "success",
-        );
-      } else {
-        alert(
-          "Imagem do mapa copiada! Cole (Ctrl+V) na conversa ou grupo desejado.",
-        );
-      }
+      showToast(
+        "Imagem do mapa copiada! Cole (Ctrl+V) na conversa ou grupo desejado.",
+        "success",
+      );
     } catch (clipboardError) {
       console.warn(
         "Não foi possível copiar automaticamente, caindo para download manual:",
         clipboardError,
       );
-      if (typeof window.showToast === "function") {
-        window.showToast(
-          "Não foi possível copiar automaticamente neste navegador. Baixe e anexe manualmente.",
-          "error",
-        );
-      }
+      showToast(
+        "Não foi possível copiar automaticamente neste navegador. Baixe e anexe manualmente.",
+        "error",
+      );
       openCardPreviewModal(dataUrl, fileName, null);
     }
   } catch (error) {
     console.error("Erro ao gerar imagem do mapa cirúrgico:", error);
-    if (typeof window.showToast === "function") {
-      window.showToast(
-        error.message || "Erro ao gerar imagem do mapa cirúrgico",
-        "error",
-      );
-    } else {
-      alert(error.message || "Erro ao gerar imagem do mapa cirúrgico");
-    }
+    showToast(error.message || "Erro ao gerar imagem do mapa cirúrgico", "error");
   } finally {
     if (button) {
       button.disabled = false;
@@ -1456,33 +1582,31 @@ function attachFilterListeners() {
   if (dateFilter) {
     dateFilter.addEventListener("change", (e) => {
       const selectedDate = e.target.value;
+      activeRange = null;
       renderSurgerySchedule(selectedDate || null);
     });
   }
 
   if (clearFilter) {
     clearFilter.addEventListener("click", () => {
-      if (dateFilter) dateFilter.value = "";
+      activeRange = null;
       renderSurgerySchedule(null);
     });
   }
 
+  // Filtros rápidos: Hoje (data única), Semana/Mês (intervalo), Todas
   quickFilters.forEach((btn) => {
     btn.addEventListener("click", (e) => {
       const filter = e.currentTarget.dataset.filter;
-      const today = new Date();
 
       if (filter === "today") {
-        const todayString = today.toISOString().split("T")[0];
-        if (dateFilter) dateFilter.value = todayString;
-        renderSurgerySchedule(todayString);
-      } else if (filter === "all") {
-        if (dateFilter) dateFilter.value = "";
+        activeRange = null;
+        renderSurgerySchedule(toLocalISODate()); // fuso local, não UTC
+      } else if (filter === "week" || filter === "month") {
+        activeRange = filter;
         renderSurgerySchedule(null);
       } else {
-        // Para 'week' e 'month', apenas limpar filtro específico por enquanto
-        // Pode ser expandido futuramente para filtros de intervalo
-        if (dateFilter) dateFilter.value = "";
+        activeRange = null;
         renderSurgerySchedule(null);
       }
     });
@@ -1496,10 +1620,23 @@ export function initSurgerySchedule() {
   // Renderizar ao carregar
   renderSurgerySchedule();
 
+  // Lembra quais "Dados do mapa" estão abertos (toggle não borbulha: captura)
+  const container = document.getElementById("surgeryScheduleContent");
+  container?.addEventListener(
+    "toggle",
+    (e) => {
+      if (!e.target.matches(".surgery-card-more")) return;
+      const id = e.target.dataset.cardId;
+      if (e.target.open) openMapDetails.add(id);
+      else openMapDetails.delete(id);
+    },
+    true,
+  );
+
   // Atualizar quando mudar de seção
   document.addEventListener("sectionChanged", (e) => {
     if (e.detail === "surgery-schedule") {
-      renderSurgerySchedule();
+      rerenderKeepingFilter(); // mantém o filtro escolhido ao voltar para a agenda
     }
   });
 }

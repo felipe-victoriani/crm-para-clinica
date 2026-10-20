@@ -1,15 +1,22 @@
 // main.js - Ponto de entrada da aplicação
 import { logout, onAuthStateChange } from "./auth.js";
 import { loadPatients, cleanup, fixPatientsCreatedAt } from "./patients.js";
-import { renderDashboard, renderPatients, setupEventListeners } from "./ui.js";
+import {
+  renderDashboard,
+  renderPatients,
+  setupEventListeners,
+  populateSelectOptions,
+  showSectionFromHash,
+} from "./ui.js";
 import {
   initSurgerySchedule,
-  renderSurgerySchedule,
+  refreshSurgeryScheduleSafely,
 } from "./surgery-schedule.js";
 import {
   initSurgeryDateField,
   addSurgeryDateToEditModal,
 } from "./surgery-form.js";
+import { showToast } from "./utils.js";
 
 // Inicializar autenticação
 const logoutBtn = document.getElementById("logoutBtn");
@@ -21,10 +28,6 @@ function supportsCleanUrls() {
 
 function pathForLogin() {
   return supportsCleanUrls() ? "/login" : "login.html";
-}
-
-function pathForIndex() {
-  return supportsCleanUrls() ? "/" : "index.html";
 }
 
 logoutBtn.addEventListener("click", async () => {
@@ -39,41 +42,60 @@ onAuthStateChange((user) => {
   }
 });
 
+// Só re-renderiza em tempo real depois que a tela inicial estiver montada
+let appReady = false;
+
+/**
+ * Chamado a cada mudança no Firebase (inclusive feita por outro usuário):
+ * mantém dashboard, lista e agenda sincronizados sem recarregar a página.
+ */
+function handlePatientsChanged() {
+  if (!appReady) return;
+  renderDashboard();
+  renderPatients();
+  refreshSurgeryScheduleSafely();
+}
+
 // Inicializar aplicação
 async function initApp() {
   const loadingOverlay = document.getElementById("loadingOverlay");
 
   try {
-    await loadPatients();
+    // Opções dos selects vêm de patients.js (fonte única)
+    populateSelectOptions();
+    addSurgeryDateToEditModal(); // Campos de cirurgia no modal (antes dos listeners)
+
+    await loadPatients(handlePatientsChanged);
     await fixPatientsCreatedAt(); // Corrigir pacientes sem createdAt
     renderDashboard();
     renderPatients();
     setupEventListeners();
     initSurgerySchedule(); // Inicializar módulo de agenda cirúrgica
     initSurgeryDateField(); // Inicializar lógica do campo de data da cirurgia
-    addSurgeryDateToEditModal(); // Adicionar campo de data no modal de edição
 
-    // Mostrar seção inicial (dashboard)
-    const dashboardLink = document.querySelector('[data-section="dashboard"]');
-    if (dashboardLink) {
-      dashboardLink.click();
-    }
+    // Abre a seção indicada na URL (#patients etc.) — F5 mantém a tela
+    showSectionFromHash();
+    appReady = true;
   } catch (error) {
     console.error("Erro ao inicializar aplicação:", error);
-    alert("Erro ao carregar aplicação. Por favor, recarregue a página.");
+    showToast(
+      "Erro ao carregar a aplicação. Recarregue a página.",
+      "error",
+      { label: "Recarregar", onClick: () => window.location.reload() },
+      15000,
+    );
   } finally {
     // Esconder indicador de carregamento
     if (loadingOverlay) {
       loadingOverlay.classList.add("hidden");
-      setTimeout(() => {
-        loadingOverlay.style.display = "none";
-      }, 300);
+      setTimeout(() => loadingOverlay.remove(), 300);
     }
   }
 }
 
-// Exportar renderSurgerySchedule para uso em outros módulos
-window.renderSurgerySchedule = renderSurgerySchedule;
+// Exposto para ui.js atualizar a agenda mantendo o filtro de data ativo
+// (ui.js não importa surgery-schedule.js direto para evitar import circular)
+window.refreshSurgerySchedule = refreshSurgeryScheduleSafely;
 
 // Limpar recursos quando a página for fechada
 window.addEventListener("beforeunload", () => {

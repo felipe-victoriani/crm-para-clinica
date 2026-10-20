@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login — Oftalmo 15</title>
+    <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta name="theme-color" content="#111827" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -19,73 +20,43 @@
     />
   </head>
   <body class="login-page">
-    <div class="login-wrapper">
+    <main class="login-wrapper">
       <div class="login-card">
-        <h2>Bem-vindo de volta</h2>
+        <p class="login-brand">CRM Oftalmo 15</p>
+        <h1 class="login-title">Bem-vindo de volta</h1>
         <p class="login-desc">
           Entre com suas credenciais para acessar o painel.
         </p>
         <form id="loginForm">
           <div class="input-group">
-            <label for="email"><i class="fas fa-envelope"></i> E-mail</label>
+            <label for="email"><i class="fas fa-envelope" aria-hidden="true"></i> E-mail</label>
             <input
               type="email"
               id="email"
               placeholder="seu@email.com"
               required
               autocomplete="email"
+              aria-describedby="errorMessage"
             />
           </div>
           <div class="input-group">
-            <label for="password"><i class="fas fa-lock"></i> Senha</label>
+            <label for="password"><i class="fas fa-lock" aria-hidden="true"></i> Senha</label>
             <input
               type="password"
               id="password"
               placeholder="••••••••"
               required
               autocomplete="current-password"
+              aria-describedby="errorMessage"
             />
           </div>
           <button type="submit" class="login-btn">
-            <i class="fas fa-arrow-right-to-bracket"></i> Entrar
+            <i class="fas fa-arrow-right-to-bracket" aria-hidden="true"></i> Entrar
           </button>
         </form>
-        <p id="errorMessage" class="login-error"></p>
+        <p id="errorMessage" class="login-error" role="alert" aria-live="assertive"></p>
       </div>
-    </div>
-    <script type="module" src="auth.js"></script>
-    <script type="module">
-      import { login, onAuthStateChange } from "./auth.js";
-
-      const loginForm = document.getElementById("loginForm");
-      const errorMessage = document.getElementById("errorMessage");
-
-      // Helper para compatibilizar produção (cleanUrls) e ambiente local (.html)
-      function supportsCleanUrls() {
-        return !/\.html$/.test(window.location.pathname);
-      }
-      function pathForIndex() {
-        return supportsCleanUrls() ? "/" : "index.html";
-      }
-
-      loginForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
-        try {
-          await login(email, password);
-          // Redirecionar sem adicionar ao histórico
-          window.location.replace(pathForIndex());
-        } catch (error) {
-          errorMessage.textContent = "Erro no login: " + error.message;
-        }
-      });
-
-      onAuthStateChange((user) => {
-        if (user) {
-          window.location.replace(pathForIndex());
-        }
-      });
-    </script>
+    </main>
+    <script type="module" src="login.js"></script>
   </body>
 </html>
