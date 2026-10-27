@@ -82,6 +82,12 @@
             >
           </li>
           <li>
+            <a href="#contact-lenses" class="nav-link" data-section="contact-lenses"
+              ><i class="fas fa-eye" aria-hidden="true"></i> Lentes de Contato
+              <span id="lensNavBadge" class="nav-badge" hidden></span
+            ></a>
+          </li>
+          <li>
             <a href="#settings" class="nav-link" data-section="settings"
               ><i class="fas fa-cog" aria-hidden="true"></i> Configurações</a
             >
@@ -384,6 +390,32 @@
           </div>
         </section>
 
+        <section id="contact-lenses-section" class="section" aria-labelledby="lensTitle">
+          <div class="section-header">
+            <h2 id="lensTitle">
+              <i class="fas fa-eye" aria-hidden="true"></i> Lentes de Contato
+              <span id="lensCounter" class="section-counter"></span>
+            </h2>
+            <button id="newLensOrderBtn" type="button" class="btn-primary">
+              <i class="fas fa-plus" aria-hidden="true"></i> Novo pedido
+            </button>
+          </div>
+
+          <!-- Barra: abas de status (renderizadas via JS) + busca -->
+          <div class="lens-toolbar">
+            <div id="lensTabs" class="lens-tabs" role="group" aria-label="Filtrar pedidos por situação"></div>
+            <div class="search-field" role="search">
+              <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+              <label for="lensSearch" class="sr-only">Buscar por paciente, marca ou fornecedor</label>
+              <input id="lensSearch" type="search" placeholder="Paciente, marca ou fornecedor" autocomplete="off" />
+            </div>
+          </div>
+
+          <div id="lensOrdersList" class="lens-list" aria-live="polite">
+            <!-- Pedidos renderizados por contact-lenses.js -->
+          </div>
+        </section>
+
         <section id="reports-section" class="section" aria-labelledby="reportsTitle">
           <h2 id="reportsTitle"><i class="fas fa-chart-bar" aria-hidden="true"></i> Relatórios</h2>
 
@@ -516,6 +548,103 @@
           paciente.
         </p>
       </div>
+    </dialog>
+
+    <!-- Modal de pedido de lentes de contato (novo / editar / repetir) -->
+    <dialog id="lensModal" class="modal-content lens-modal" aria-labelledby="lensModalTitle">
+      <button type="button" class="close" data-close aria-label="Fechar">
+        <i class="fas fa-xmark" aria-hidden="true"></i>
+      </button>
+      <h2 id="lensModalTitle">Novo pedido de lentes</h2>
+      <form id="lensForm" class="lens-form">
+        <div class="form-field form-field--full">
+          <label for="lensPatientName">Nome do paciente</label>
+          <input id="lensPatientName" name="patientName" type="text" maxlength="120" autocomplete="off" required />
+        </div>
+        <div class="form-field">
+          <label for="lensPhone">Telefone (WhatsApp)</label>
+          <input id="lensPhone" name="phone" type="tel" inputmode="numeric" placeholder="67999915653" maxlength="15" />
+        </div>
+        <div class="form-field">
+          <label for="lensBrand">Marca da lente</label>
+          <input id="lensBrand" name="brand" type="text" maxlength="80" placeholder="Ex: Acuvue Oasys" />
+        </div>
+        <div class="form-field">
+          <label for="lensType">Tipo</label>
+          <select id="lensType" name="lensType">
+            <option value="">Selecione</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="lensQuantity">Quantidade</label>
+          <!-- Número + unidade (caixas ou par teste) lado a lado -->
+          <div class="lens-qty">
+            <input id="lensQuantity" name="quantity" type="number" min="1" max="99" inputmode="numeric" />
+            <label for="lensQuantityUnit" class="sr-only">Unidade</label>
+            <select id="lensQuantityUnit" name="quantityUnit"></select>
+          </div>
+        </div>
+
+        <!-- Grau OD/OE: inputs gerados por contact-lenses.js a partir de RX_FIELDS -->
+        <fieldset class="form-field--full lens-rx-fieldset">
+          <legend>Grau</legend>
+          <div id="lensRxGrid" class="lens-rx-grid"></div>
+          <p id="lensRxError" class="lens-rx-error" role="alert" hidden>
+            <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+            Valor de grau inválido. Use números como -2,25 / +1,00, eixo de 0 a 180.
+          </p>
+        </fieldset>
+
+        <div class="form-field">
+          <label for="lensOrderDate">Data do pedido</label>
+          <input id="lensOrderDate" name="orderDate" type="date" required />
+        </div>
+        <div class="form-field">
+          <label for="lensExpectedDate">Previsão de chegada</label>
+          <input id="lensExpectedDate" name="expectedDate" type="date" />
+        </div>
+        <div class="form-field">
+          <label for="lensSupplier">Fornecedor</label>
+          <input id="lensSupplier" name="supplier" type="text" maxlength="80" placeholder="Laboratório / distribuidor" />
+        </div>
+        <div class="form-field">
+          <label for="lensDuration">Duração (meses)</label>
+          <input
+            id="lensDuration"
+            name="durationMonths"
+            type="number"
+            min="1"
+            max="24"
+            inputmode="numeric"
+            aria-describedby="lensDurationHint"
+          />
+          <small id="lensDurationHint" class="field-hint">Para lembrar a recompra</small>
+        </div>
+        <div class="form-field">
+          <label for="lensPrice">Valor (R$)</label>
+          <input id="lensPrice" name="price" type="number" min="0" step="0.01" inputmode="decimal" />
+        </div>
+        <div class="form-field">
+          <label for="lensPayment">Pagamento</label>
+          <select id="lensPayment" name="paymentStatus">
+            <option value="">Não informado</option>
+          </select>
+        </div>
+        <div id="lensStatusField" class="form-field form-field--full" hidden>
+          <label for="lensStatus">Situação</label>
+          <select id="lensStatus" name="status"></select>
+        </div>
+        <div class="form-field form-field--full">
+          <label for="lensNotes">Observações</label>
+          <textarea id="lensNotes" name="notes" maxlength="2000" rows="3"></textarea>
+        </div>
+        <div class="app-dialog-actions form-field--full">
+          <button type="button" class="btn-ghost" data-close>Cancelar</button>
+          <button type="submit" class="btn-primary">
+            <i class="fas fa-floppy-disk" aria-hidden="true"></i> Salvar pedido
+          </button>
+        </div>
+      </form>
     </dialog>
 
     <!-- Diálogo genérico de confirmação/entrada de texto (substitui confirm/prompt) -->

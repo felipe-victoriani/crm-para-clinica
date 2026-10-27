@@ -16,6 +16,10 @@ import {
   initSurgeryDateField,
   addSurgeryDateToEditModal,
 } from "./surgery-form.js";
+import {
+  initContactLenses,
+  cleanupContactLenses,
+} from "./contact-lenses.js";
 import { showToast } from "./utils.js";
 
 // Inicializar autenticação
@@ -72,6 +76,7 @@ async function initApp() {
     setupEventListeners();
     initSurgerySchedule(); // Inicializar módulo de agenda cirúrgica
     initSurgeryDateField(); // Inicializar lógica do campo de data da cirurgia
+    initContactLenses(); // Controle de pedidos de lentes de contato (tempo real)
 
     // Abre a seção indicada na URL (#patients etc.) — F5 mantém a tela
     showSectionFromHash();
@@ -100,6 +105,7 @@ window.refreshSurgerySchedule = refreshSurgeryScheduleSafely;
 // Limpar recursos quando a página for fechada
 window.addEventListener("beforeunload", () => {
   cleanup();
+  cleanupContactLenses();
 });
 
 // Executar quando DOM estiver pronto

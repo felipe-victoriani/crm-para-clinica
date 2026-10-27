@@ -16,6 +16,10 @@
 // ------------------------------------------------------------------
 // Opção 2 (atual): qualquer usuário autenticado lê e escreve tudo
 // ------------------------------------------------------------------
+// PUBLICADA em 2026-10-26: esta opção + o bloco "contactLensOrders" da
+// Opção 3 SEM as linhas .read/.write de allowedUsers (só .indexOn e os
+// .validate). O nó allowedUsers ainda não existe no banco, então publicar
+// a Opção 3 inteira hoje trancaria a equipe para fora.
 // LGPD: dados de saúde ficam acessíveis a QUALQUER conta criada no
 // Firebase Auth do projeto. Se alguém conseguir criar conta (ex: cadastro
 // por e-mail habilitado), lê todos os pacientes. Prefira a Opção 3.
@@ -64,6 +68,39 @@
         "notes": {
           ".validate": "newData.isString() && newData.val().length <= 5000"
         }
+      }
+    },
+    // Pedidos de lentes de contato (contact-lenses.js) — mesma equipe autorizada
+    "contactLensOrders": {
+      ".read": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('allowedUsers').child(auth.uid).val() === true",
+      ".indexOn": ["createdAt", "status"],
+      "$orderId": {
+        // Pedido precisa de paciente, situação e data; exclusão (null) é permitida
+        ".validate": "!newData.exists() || newData.hasChildren(['patientName', 'status', 'orderDate'])",
+        "patientName": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
+        },
+        "phone": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9]{0,15}$/)"
+        },
+        "status": {
+          ".validate": "newData.val() === 'ordered' || newData.val() === 'arrived' || newData.val() === 'notified' || newData.val() === 'delivered' || newData.val() === 'cancelled'"
+        },
+        "orderDate": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
+        },
+        "expectedDate": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)"
+        },
+        "brand": { ".validate": "newData.isString() && newData.val().length <= 80" },
+        "supplier": { ".validate": "newData.isString() && newData.val().length <= 80" },
+        "notes": { ".validate": "newData.isString() && newData.val().length <= 2000" },
+        "boxes": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99" },
+        "quantity": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 99" },
+        "quantityUnit": { ".validate": "newData.val() === 'caixa' || newData.val() === 'par_teste'" },
+        "durationMonths": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 24" },
+        "price": { ".validate": "newData.isNumber() && newData.val() >= 0" }
       }
     }
   }

@@ -86,6 +86,7 @@ const SECTIONS = [
   "patients",
   "reports",
   "surgery-schedule",
+  "contact-lenses",
   "settings",
 ];
 
@@ -718,7 +719,7 @@ function getSettings() {
  * Monta o número completo (país + DDD + número) só com dígitos.
  * Retorna "" se o paciente não tiver telefone.
  */
-function buildFullPhone(phone) {
+export function buildFullPhone(phone) {
   const settings = getSettings();
   const cc = String(settings.countryCode || "55").replace(/\D/g, "");
   const ddd = String(settings.areaCode || "").replace(/\D/g, "");
