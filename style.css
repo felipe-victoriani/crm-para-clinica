@@ -3977,6 +3977,12 @@ dialog.modal-content::backdrop {
   white-space: nowrap;
 }
 
+/* Vários telefones no mesmo campo: um por linha, cada número sem quebrar */
+.map-phone-part {
+  display: block;
+  white-space: nowrap;
+}
+
 /* Ao imprimir o mapa (classe posta pelo JS só durante a impressão), mostrar
    somente ele. display:none — e não visibility:hidden — para o resto da
    página não ocupar altura e gerar páginas em branco depois do mapa. */

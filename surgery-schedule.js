@@ -1226,6 +1226,22 @@ function formatPhoneDisplay(phone) {
 }
 
 /**
+ * Telefone da célula do mapa: quando há mais de um número ("/", ",", ";"),
+ * cada um fica inteiro numa linha (nowrap) e a quebra só acontece entre
+ * eles — assim um campo com vários números não alarga a tabela toda.
+ */
+function formatPhoneCellHtml(phone) {
+  const parts = (phone || "")
+    .split(/\s*[\/,;]\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length <= 1) return escapeHtml(formatPhoneDisplay(phone));
+  return parts
+    .map((part) => `<span class="map-phone-part">${escapeHtml(formatPhoneDisplay(part))}</span>`)
+    .join(" ");
+}
+
+/**
  * Retorna olho/qt/lio correspondentes à cirurgia exibida no card
  * (primeira ou segunda data, conforme _isSecondSurgery)
  */
@@ -1362,7 +1378,7 @@ function buildSurgeryMapHtml({ dateString, patientsOfDay, anestesista }) {
         <td>${eye ? `<span class="${escapeHtml(eyeClass)}">${escapeHtml(eye)}</span>` : ""}</td>
         <td>${escapeHtml(qty)}</td>
         <td class="map-col-lio">${escapeHtml(lio || "-")}</td>
-        <td class="map-col-phone">${escapeHtml(formatPhoneDisplay(patient.phone))}</td>
+        <td class="map-col-phone">${formatPhoneCellHtml(patient.phone)}</td>
       </tr>
     `;
     })
@@ -1455,12 +1471,16 @@ function fitSurgeryMapToPage(printArea) {
 
   // Várias passadas: cada uma chega mais perto do alvo, porque bordas de
   // 1px e outros valores fixos não encolhem junto com o font-size.
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const actualHeight = page.offsetHeight;
-    if (actualHeight <= MAP_PAGE_MAX_HEIGHT_PX) break;
+  // Checa altura E largura: colunas nowrap (telefone/LIO/horário) podem
+  // deixar a tabela mais larga que a página, e o overflow:hidden do mapa
+  // cortaria a última coluna (telefone) mesmo com a altura cabendo.
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const heightScale = MAP_PAGE_MAX_HEIGHT_PX / page.offsetHeight;
+    const widthScale = page.clientWidth / page.scrollWidth;
+    const scale = Math.min(heightScale, widthScale);
+    if (scale >= 1) break;
 
     const currentFontSizePx = parseFloat(getComputedStyle(page).fontSize);
-    const scale = MAP_PAGE_MAX_HEIGHT_PX / actualHeight;
     page.style.fontSize = `${currentFontSizePx * scale * 0.99}px`;
   }
 
